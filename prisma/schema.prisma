@@ -110,9 +110,9 @@ model Category {
 }
 
 model Product {
-  id           String             @id @default(cuid())
-  slug         String             @unique
-  name         String
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
   description  String?
   priceCents   Int                // store as cents to avoid float errors
   stock        Int                @default(0)

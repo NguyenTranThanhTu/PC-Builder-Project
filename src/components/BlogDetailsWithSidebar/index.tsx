@@ -2,18 +2,15 @@ import React from "react";
 import Breadcrumb from "../Common/Breadcrumb";
 import SearchForm from "../Blog/SearchForm";
 import LatestPosts from "../Blog/LatestPosts";
-import LatestProducts from "../Blog/LatestProducts";
+import LatestProductsDropIn from "../Blog/LatestProductsDropIn";
 import blogData from "../BlogGrid/blogData";
 import Image from "next/image";
-import shopData from "../Shop/shopData"; 
+import shopData from "../Shop/shopData";
 
 const BlogDetailsWithSidebar = () => {
   return (
     <>
-      <Breadcrumb
-        title={"Blog Details With Sidebar"}
-        pages={["blog details sidebar"]}
-      />
+      <Breadcrumb title={"Blog Details With Sidebar"} pages={["blog details sidebar"]} />
       <section className="overflow-hidden py-20 bg-gray-2">
         <div className="max-w-[1170px] w-full mx-auto px-4 sm:px-8 xl:px-0">
           <div className="flex flex-col lg:flex-row gap-7.5 xl:gap-12.5">
@@ -271,8 +268,8 @@ const BlogDetailsWithSidebar = () => {
               {/* <!-- Recent Posts box --> */}
               <LatestPosts blogs={blogData} />
 
-              {/* <!-- Latest Products box --> */}
-              <LatestProducts products={shopData} />
+              {/* <!-- Latest Products box (live) --> */}
+              <LatestProductsDropIn limit={3} />
 
               {/* <!-- Popular Category box --> */}
               <div className="shadow-1 bg-white rounded-xl mt-7.5">

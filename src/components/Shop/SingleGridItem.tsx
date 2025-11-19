@@ -76,7 +76,7 @@ const SingleGridItem = ({ item }: { item: Product }) => {
             }}
             id="newOne"
             aria-label="button for quick view"
-            className="flex items-center justify-center w-9 h-9 rounded-[5px] shadow-1 ease-out duration-200 text-dark bg-white hover:text-blue"
+            className="flex items-center justify-center w-9 h-9 rounded-[5px] shadow-1 ease-out duration-200 bg-green text-white hover:bg-green-dark"
           >
             <svg
               className="fill-current"
@@ -112,7 +112,7 @@ const SingleGridItem = ({ item }: { item: Product }) => {
             onClick={() => handleItemToWishList()}
             aria-label="button for favorite select"
             id="favOne"
-            className="flex items-center justify-center w-9 h-9 rounded-[5px] shadow-1 ease-out duration-200 text-dark bg-white hover:text-blue"
+            className="flex items-center justify-center w-9 h-9 rounded-[5px] shadow-1 ease-out duration-200 bg-blue text-white hover:bg-blue-dark"
           >
             <svg
               className="fill-current"
@@ -183,6 +183,14 @@ const SingleGridItem = ({ item }: { item: Product }) => {
           <span className="text-dark-4 line-through">${item.price}</span>
         )}
       </span>
+      <div className="mt-1">
+        <Link
+          href={item?.productSlug ? `/shop-details/${item.productSlug}` : "/shop-details"}
+          className="text-xs text-blue hover:underline"
+        >
+          View specs
+        </Link>
+      </div>
     </div>
   );
 };

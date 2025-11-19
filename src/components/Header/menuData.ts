@@ -8,6 +8,12 @@ export const menuData: Menu[] = [
     path: "/",
   },
   {
+    id: 100,
+    title: "PC Builder",
+    newTab: false,
+    path: "/pc-builder",
+  },
+  {
     id: 2,
     title: "Shop",
     newTab: false,

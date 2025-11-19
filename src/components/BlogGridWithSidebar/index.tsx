@@ -1,14 +1,15 @@
 import React from "react";
 import Breadcrumb from "../Common/Breadcrumb";
 import BlogItem from "../Blog/BlogItem";
-import blogData from "../BlogGrid/blogData"; 
-import SearchForm from "../Blog/SearchForm"; 
+import blogData from "../BlogGrid/blogData";
+import SearchForm from "../Blog/SearchForm";
 import LatestPosts from "../Blog/LatestPosts";
-import LatestProducts from "../Blog/LatestProducts";
+import LatestProductsDropIn from "../Blog/LatestProductsDropIn";
 import Categories from "../Blog/Categories";
-import shopData from "../Shop/shopData"; 
- 
+import shopData from "../Shop/shopData";
+
 const BlogGridWithSidebar = () => {
+
   const categories = [
     {
       name: "Desktop",
@@ -178,8 +179,8 @@ const BlogGridWithSidebar = () => {
               {/* <!-- Recent Posts box --> */}
               <LatestPosts blogs={blogData} />
 
-              {/* <!-- Latest Products box --> */}
-              <LatestProducts products={shopData} />
+              {/* <!-- Latest Products box (live) --> */}
+              <LatestProductsDropIn limit={3} />
 
               {/* <!-- Popular Category box --> */}
               <Categories categories={categories} />

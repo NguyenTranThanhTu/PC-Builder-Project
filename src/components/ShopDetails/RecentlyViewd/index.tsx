@@ -3,8 +3,6 @@ import React from "react";
 import shopData from "@/components/Shop/shopData";
 import ProductItem from "@/components/Common/ProductItem";
 import Image from "next/image";
-import Link from "next/link";
-
 import { Swiper, SwiperSlide } from "swiper/react";
 import { useCallback, useRef } from "react";
 import "swiper/css/navigation";
@@ -15,11 +13,13 @@ const RecentlyViewdItems = () => {
 
   const handlePrev = useCallback(() => {
     if (!sliderRef.current) return;
+    // @ts-ignore
     sliderRef.current.swiper.slidePrev();
   }, []);
 
   const handleNext = useCallback(() => {
     if (!sliderRef.current) return;
+    // @ts-ignore
     sliderRef.current.swiper.slideNext();
   }, []);
 

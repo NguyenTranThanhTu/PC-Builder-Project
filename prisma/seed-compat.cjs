@@ -34,11 +34,40 @@ async function upsertRule(rule) {
 }
 
 async function main() {
+    // ...existing code...
+  // Category IDs
   const cpuCat = await getCategoryId("cpu");
   const mbCat = await getCategoryId("mainboard");
   const gpuCat = await getCategoryId("gpu");
   const caseCat = await getCategoryId("case");
   const psuCat = await getCategoryId("psu");
+  const ramCat = await getCategoryId("ram");
+  
+  const MB_RAM_TYPE = await getAttrTypeId("MB_RAM_TYPE");
+  const RAM_TYPE = await getAttrTypeId("RAM_TYPE");
+  const MB_MAX_RAM_SPEED_MHZ = await getAttrTypeId("MB_MAX_RAM_SPEED_MHZ");
+  const RAM_SPEED_MHZ = await getAttrTypeId("RAM_SPEED_MHZ");
+
+    // RAM ↔ Mainboard compatibility rules
+    await upsertRule({
+      leftCategoryId: ramCat,
+      rightCategoryId: mbCat,
+      leftAttributeTypeId: RAM_TYPE,
+      rightAttributeTypeId: MB_RAM_TYPE,
+      operator: Operator.EQ,
+      note: "Loại RAM phải khớp với Mainboard",
+    });
+
+    // 4b) RAM speed must be <= Mainboard max supported speed
+    await upsertRule({
+      leftCategoryId: ramCat,
+      rightCategoryId: mbCat,
+      leftAttributeTypeId: RAM_SPEED_MHZ,
+      rightAttributeTypeId: MB_MAX_RAM_SPEED_MHZ,
+      operator: Operator.LTE,
+      note: "Tốc độ RAM không vượt quá mức Mainboard hỗ trợ",
+    });
+  // (removed duplicate category declarations)
 
   const CPU_SOCKET = await getAttrTypeId("CPU_SOCKET");
   const MB_SOCKET = await getAttrTypeId("MB_SOCKET");

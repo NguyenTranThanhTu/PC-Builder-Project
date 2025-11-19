@@ -5,9 +5,8 @@ import Breadcrumb from "../Common/Breadcrumb";
 import CustomSelect from "./CustomSelect";
 import CategoryDropdown from "./CategoryDropdown";
 import AttributeRangeFilter from "./AttributeRangeFilter";
-import GenderDropdown from "./GenderDropdown";
-import SizeDropdown from "./SizeDropdown";
-import ColorsDropdwon from "./ColorsDropdwon";
+import AttributeSelectFilter from "./AttributeSelectFilter";
+// Removed non-applicable filters for electronics (gender/size/color)
 import dynamic from "next/dynamic";
 // Defer loading price range slider (heavy lib) to client & when sidebar renders
 const PriceDropdown = dynamic(() => import("./PriceDropdown"), { ssr: false });
@@ -86,20 +85,7 @@ const ShopWithSidebar = ({ products, categories = [], pagination, view = "grid" 
 
   // categories now supplied from server (published with product counts)
 
-  const genders = [
-    {
-      name: "Men",
-      products: 10,
-    },
-    {
-      name: "Women",
-      products: 23,
-    },
-    {
-      name: "Unisex",
-      products: 8,
-    },
-  ];
+  // Deprecated: genders/size/colors are not applicable for PC parts
 
   useEffect(() => {
     window.addEventListener("scroll", handleStickyMenu);
@@ -198,17 +184,31 @@ const ShopWithSidebar = ({ products, categories = [], pagination, view = "grid" 
                   {/* <!-- category box --> */}
                   <CategoryDropdown categories={categories} />
 
-                  {/* <!-- gender box --> */}
-                  <GenderDropdown genders={genders} />
-
-                  {/* // <!-- size box --> */}
-                  <SizeDropdown />
-
-                  {/* // <!-- color box --> */}
-                  <ColorsDropdwon />
+                  {/* Removed gender/size/color filters to match electronics domain */}
 
                   {/* // <!-- attribute numeric filter example (GPU VRAM GB) --> */}
                   <AttributeRangeFilter attrKey="GPU_VRAM_GB" label="VRAM (GB)" min={0} max={48} step={1} />
+
+                  {/* // <!-- attribute select filters (CPU Socket, RAM Type) --> */}
+                  <AttributeSelectFilter
+                    attrKey="CPU_SOCKET"
+                    label="CPU Socket"
+                    options={[
+                      { label: "LGA1700", value: "LGA1700" },
+                      { label: "AM5", value: "AM5" },
+                      { label: "AM4", value: "AM4" },
+                      { label: "LGA1200", value: "LGA1200" },
+                    ]}
+                  />
+                  <AttributeSelectFilter
+                    attrKey="RAM_TYPE"
+                    label="RAM Type"
+                    options={[
+                      { label: "DDR5", value: "DDR5" },
+                      { label: "DDR4", value: "DDR4" },
+                      { label: "DDR3", value: "DDR3" },
+                    ]}
+                  />
 
                   {/* // <!-- price range box --> */}
                   <PriceDropdown />

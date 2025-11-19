@@ -53,8 +53,23 @@ export default function CompatibilityAssistant({ productId, productName }: Props
       <h2 className="text-lg font-semibold mb-3">Tương thích linh kiện</h2>
       <p className="text-xs text-gray-600 mb-4">Thêm các sản phẩm bạn xem vào &quot;build list&quot; tạm thời và chạy kiểm tra tương thích cơ bản (CPU ↔ Mainboard, GPU ↔ Case, PSU ↔ CPU/GPU...).</p>
       <div className="flex flex-wrap gap-3 items-center mb-4">
-        <button onClick={toggleInBuild} className={`px-4 py-2 rounded text-sm font-medium ${inBuild ? 'bg-green-600 text-white' : 'bg-blue text-white'}`}>{inBuild ? 'Đã thêm vào build' : 'Thêm vào build'}</button>
-        <button onClick={evaluate} disabled={buildList.length === 0 || loading} className="px-4 py-2 rounded bg-purple-600 text-white text-sm disabled:opacity-50">{loading ? 'Đang đánh giá...' : 'Đánh giá tương thích'}</button>
+        <button
+          onClick={toggleInBuild}
+          className={`px-4 py-2 rounded text-sm font-medium ${
+            inBuild
+              ? 'bg-green text-white hover:bg-green-dark'
+              : 'bg-blue text-white hover:bg-blue-dark'
+          }`}
+        >
+          {inBuild ? 'Đã thêm vào build' : 'Thêm vào build'}
+        </button>
+        <button
+          onClick={evaluate}
+          disabled={buildList.length === 0 || loading}
+          className="px-4 py-2 rounded bg-green text-white text-sm hover:bg-green-dark disabled:opacity-50"
+        >
+          {loading ? 'Đang đánh giá...' : 'Đánh giá tương thích'}
+        </button>
         <span className="text-[11px] text-gray-500">Build hiện có: {buildList.length} sản phẩm</span>
       </div>
       {error && <div className="text-xs text-red-600 mb-2">{error}</div>}

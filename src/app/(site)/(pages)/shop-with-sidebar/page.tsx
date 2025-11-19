@@ -20,16 +20,19 @@ export default async function ShopWithSidebarPage({ searchParams }: any) {
   const categorySlug = sp?.category as string | undefined;
   const view = (sp?.view as string) === "list" ? "list" : "grid";
 
-  const where: any = { status: 'PUBLISHED', archivedAt: null };
-  if (categorySlug) where.category = { slug: categorySlug };
+  // Base where without price to allow safe fallback if price filter is invalid
+  const baseWhere: any = { status: 'PUBLISHED', archivedAt: null };
+  if (categorySlug) baseWhere.category = { slug: categorySlug };
 
   // Price range filter: priceMin/priceMax are in currency; convert to cents
   const priceMin = sp?.priceMin ? Number(sp.priceMin) : undefined;
   const priceMax = sp?.priceMax ? Number(sp.priceMax) : undefined;
+  // Build a clone with price filter if provided
+  const whereWithPrice: any = { ...baseWhere };
   if (!isNaN(priceMin as number) || !isNaN(priceMax as number)) {
-    where.priceCents = {};
-    if (!isNaN(priceMin as number)) where.priceCents.gte = Math.floor((priceMin as number) * 100);
-    if (!isNaN(priceMax as number)) where.priceCents.lte = Math.floor((priceMax as number) * 100);
+    whereWithPrice.priceCents = {};
+    if (!isNaN(priceMin as number)) whereWithPrice.priceCents.gte = Math.floor((priceMin as number) * 100);
+    if (!isNaN(priceMax as number)) whereWithPrice.priceCents.lte = Math.floor((priceMax as number) * 100);
   }
 
   // Generic attribute filters via query params:
@@ -78,27 +81,55 @@ export default async function ShopWithSidebarPage({ searchParams }: any) {
       delete (andFilters as any)._acc;
     }
   }
-  if (andFilters.length) where.AND = andFilters;
+  if (andFilters.length) {
+    baseWhere.AND = andFilters;
+    whereWithPrice.AND = andFilters;
+  }
 
-  const [total, products, categories] = await Promise.all([
-    prisma.product.count({ where }),
-    prisma.product.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      include: {
-        category: { select: { slug: true } },
-        attributes: { include: { attributeType: { select: { key: true, valueType: true } } } },
-        _count: { select: { reviews: true } },
-      },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-    prisma.category.findMany({
-      where: { products: { some: { status: 'PUBLISHED', archivedAt: null } } },
-      orderBy: { name: 'asc' },
-      include: { _count: { select: { products: true } } }
-    })
-  ]);
+  // Fetch categories regardless of product query success
+  const categoriesPromise = prisma.category.findMany({
+    where: { products: { some: { status: 'PUBLISHED', archivedAt: null } } },
+    orderBy: { name: 'asc' },
+    include: { _count: { select: { products: true } } }
+  });
+
+  // Try with price filter first; if it errors (e.g., due to schema change), fallback to baseWhere
+  let total = 0;
+  let products: any[] = [];
+  try {
+    [total, products] = await Promise.all([
+      prisma.product.count({ where: whereWithPrice }),
+      prisma.product.findMany({
+        where: whereWithPrice,
+        orderBy: { createdAt: "desc" },
+        include: {
+          category: { select: { slug: true } },
+          attributes: { include: { attributeType: { select: { key: true, valueType: true } } } },
+          _count: { select: { reviews: true } },
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      })
+    ]);
+  } catch (e) {
+    console.warn('[shop-with-sidebar] Price-filtered query failed, retrying without price filter', e);
+    [total, products] = await Promise.all([
+      prisma.product.count({ where: baseWhere }),
+      prisma.product.findMany({
+        where: baseWhere,
+        orderBy: { createdAt: "desc" },
+        include: {
+          category: { select: { slug: true } },
+          attributes: { include: { attributeType: { select: { key: true, valueType: true } } } },
+          _count: { select: { reviews: true } },
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      })
+    ]);
+  }
+
+  const categories = await categoriesPromise;
 
   const uiProducts = products.map(toUiProduct);
   const pageCount = Math.ceil(total / pageSize);
