@@ -1,0 +1,84 @@
+### Admin API Requests (adjust base URL if needed)
+@baseUrl = http://localhost:3000
+
+### Auth note: ensure you are logged in via /admin with an ADMIN_EMAILS account.
+
+### List Categories
+GET {{baseUrl}}/api/admin/categories
+
+### Create Category
+POST {{baseUrl}}/api/admin/categories
+Content-Type: application/json
+
+{
+  "name": "Coolers"
+}
+
+### Get Category by ID
+GET {{baseUrl}}/api/admin/categories/<CATEGORY_ID>
+
+### Update Category
+PATCH {{baseUrl}}/api/admin/categories/<CATEGORY_ID>
+Content-Type: application/json
+
+{
+  "name": "CPU Coolers"
+}
+
+### Delete Category (if no products reference it)
+DELETE {{baseUrl}}/api/admin/categories/<CATEGORY_ID>
+
+### List Products
+GET {{baseUrl}}/api/admin/products?page=1&pageSize=20&status=PUBLISHED
+
+### Search Products (q, category, featured)
+GET {{baseUrl}}/api/admin/products?page=1&pageSize=20&q=rtx&featured=true
+
+### Create Product
+POST {{baseUrl}}/api/admin/products
+Content-Type: application/json
+
+{
+  "name": "GPU Demo RTX 5070",
+  "priceCents": 12990000,
+  "stock": 5,
+  "categoryId": "<GPU_CATEGORY_ID>",
+  "featured": true,
+  "status": "PUBLISHED",
+  "attributes": [
+    { "key": "GPU_LENGTH_MM", "numberValue": 285 },
+    { "key": "GPU_TDP_W", "numberValue": 220 }
+  ]
+}
+
+### Get Product by ID
+GET {{baseUrl}}/api/admin/products/<PRODUCT_ID>
+
+### Update Product (optimistic concurrency)
+PATCH {{baseUrl}}/api/admin/products/<PRODUCT_ID>
+Content-Type: application/json
+
+{
+  "name": "GPU Demo RTX 5070 OC",
+  "priceCents": 13490000,
+  "updatedAt": "<LAST_FETCHED_UPDATED_AT>",
+  "attributes": [
+    { "key": "GPU_LENGTH_MM", "numberValue": 287 },
+    { "key": "GPU_TDP_W", "numberValue": 230 }
+  ]
+}
+
+### Archive Product (soft delete)
+DELETE {{baseUrl}}/api/admin/products/<PRODUCT_ID>
+
+### Upload Image (multipart/form-data)
+POST {{baseUrl}}/api/admin/upload
+Content-Type: multipart/form-data; boundary=BOUNDARY
+
+--BOUNDARY
+Content-Disposition: form-data; name="file"; filename="demo-gpu.jpg"
+Content-Type: image/jpeg
+
+< ./demo-gpu.jpg
+--BOUNDARY--
+

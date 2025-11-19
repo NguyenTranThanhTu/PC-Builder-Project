@@ -1,0 +1,101 @@
+// Seed sample CompatibilityRule records for PC builder suggestions
+// Run: node prisma/seed-compat.cjs
+
+const { PrismaClient, Operator } = require("@prisma/client");
+const prisma = new PrismaClient();
+
+async function getCategoryId(slug) {
+  const c = await prisma.category.findUnique({ where: { slug } });
+  if (!c) throw new Error(`Category not found: ${slug}`);
+  return c.id;
+}
+
+async function getAttrTypeId(key) {
+  const a = await prisma.attributeType.findUnique({ where: { key } });
+  if (!a) throw new Error(`AttributeType not found: ${key}`);
+  return a.id;
+}
+
+async function upsertRule(rule) {
+  // No unique constraint, so try to find by essential fields to avoid duplicates
+  const existing = await prisma.compatibilityRule.findFirst({
+    where: {
+      leftCategoryId: rule.leftCategoryId ?? null,
+      rightCategoryId: rule.rightCategoryId ?? null,
+      leftAttributeTypeId: rule.leftAttributeTypeId,
+      rightAttributeTypeId: rule.rightAttributeTypeId ?? null,
+      operator: rule.operator,
+    },
+  });
+  if (existing) {
+    return prisma.compatibilityRule.update({ where: { id: existing.id }, data: rule });
+  }
+  return prisma.compatibilityRule.create({ data: rule });
+}
+
+async function main() {
+  const cpuCat = await getCategoryId("cpu");
+  const mbCat = await getCategoryId("mainboard");
+  const gpuCat = await getCategoryId("gpu");
+  const caseCat = await getCategoryId("case");
+  const psuCat = await getCategoryId("psu");
+
+  const CPU_SOCKET = await getAttrTypeId("CPU_SOCKET");
+  const MB_SOCKET = await getAttrTypeId("MB_SOCKET");
+  const GPU_LENGTH_MM = await getAttrTypeId("GPU_LENGTH_MM");
+  const CASE_GPU_CLEARANCE_MM = await getAttrTypeId("CASE_GPU_CLEARANCE_MM");
+  const PSU_WATTAGE = await getAttrTypeId("PSU_WATTAGE");
+  const CPU_TDP_WATT = await getAttrTypeId("CPU_TDP_WATT");
+  const GPU_TDP_WATT = await getAttrTypeId("GPU_TDP_WATT");
+
+  // 1) CPU socket must equal Mainboard socket
+  await upsertRule({
+    leftCategoryId: cpuCat,
+    rightCategoryId: mbCat,
+    leftAttributeTypeId: CPU_SOCKET,
+    rightAttributeTypeId: MB_SOCKET,
+    operator: Operator.EQ,
+    note: "CPU socket phải khớp socket Mainboard",
+  });
+
+  // 2) GPU length must be <= Case GPU clearance
+  await upsertRule({
+    leftCategoryId: gpuCat,
+    rightCategoryId: caseCat,
+    leftAttributeTypeId: GPU_LENGTH_MM,
+    rightAttributeTypeId: CASE_GPU_CLEARANCE_MM,
+    operator: Operator.LTE,
+    note: "Chiều dài GPU không vượt quá không gian Case",
+  });
+
+  // 3a) PSU wattage >= CPU TDP
+  await upsertRule({
+    leftCategoryId: cpuCat,
+    rightCategoryId: psuCat,
+    leftAttributeTypeId: CPU_TDP_WATT,
+    rightAttributeTypeId: PSU_WATTAGE,
+    operator: Operator.LTE, // CPU TDP (left) <= PSU Wattage (right)
+    note: "Công suất PSU phải >= TDP CPU",
+  });
+
+  // 3b) PSU wattage >= GPU TDP
+  await upsertRule({
+    leftCategoryId: gpuCat,
+    rightCategoryId: psuCat,
+    leftAttributeTypeId: GPU_TDP_WATT,
+    rightAttributeTypeId: PSU_WATTAGE,
+    operator: Operator.LTE, // GPU TDP (left) <= PSU Wattage (right)
+    note: "Công suất PSU phải >= TDP GPU",
+  });
+}
+
+main()
+  .then(async () => {
+    console.log("Seeded compatibility rules.");
+    await prisma.$disconnect();
+  })
+  .catch(async (e) => {
+    console.error(e);
+    await prisma.$disconnect();
+    process.exit(1);
+  });

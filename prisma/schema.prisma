@@ -1,0 +1,245 @@
+// Prisma schema for NextAuth + eCommerce (electronics components)
+// DB: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // Use a privileged connection for Prisma's shadow DB during `prisma migrate dev` only.
+  // This lets the app role stay least-privileged (no CREATEDB required).
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ValueType {
+  STRING
+  NUMBER
+}
+
+enum Operator {
+  EQ
+  NEQ
+  LT
+  LTE
+  GT
+  GTE
+}
+
+// Order status for eCommerce flow
+enum OrderStatus {
+  PENDING     // Đang chờ
+  PROCESSING  // Đã xử lý
+  SHIPPED     // Đang giao
+  CANCELLED   // Huỷ
+}
+
+// Product lifecycle status for soft-delete & publishing workflow
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(USER)
+  accounts      Account[]
+  sessions      Session[]
+  orders        Order[]
+  reviews       Review[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  slug      String    @unique
+  name      String
+  products  Product[]
+  leftRules  CompatibilityRule[] @relation("LeftCategory")
+  rightRules CompatibilityRule[] @relation("RightCategory")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Product {
+  id           String             @id @default(cuid())
+  slug         String             @unique
+  name         String
+  description  String?
+  priceCents   Int                // store as cents to avoid float errors
+  stock        Int                @default(0)
+  imageUrl     String?
+  imageBlurData String?
+  featured     Boolean            @default(false)
+  status       ProductStatus      @default(DRAFT)
+  archivedAt   DateTime?
+  categoryId   String
+  category     Category           @relation(fields: [categoryId], references: [id])
+  attributes   ProductAttribute[]
+  orderItems   OrderItem[]
+  reviews      Review[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([categoryId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([priceCents])
+  @@index([status, categoryId, createdAt])
+}
+
+model AttributeType {
+  id        String    @id @default(cuid())
+  key       String    @unique   // e.g., CPU_SOCKET, RAM_TYPE, GPU_LENGTH_MM, CASE_GPU_CLEARANCE_MM, PSU_WATTAGE
+  label     String
+  valueType ValueType
+  productAttributes ProductAttribute[]
+  leftRules         CompatibilityRule[] @relation("LeftAttrType")
+  rightRules        CompatibilityRule[] @relation("RightAttrType")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model ProductAttribute {
+  id               String         @id @default(cuid())
+  productId        String
+  attributeTypeId  String
+  stringValue      String?
+  numberValue      Float?
+
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attributeType AttributeType @relation(fields: [attributeTypeId], references: [id])
+
+  @@index([productId])
+  @@index([attributeTypeId])
+  @@index([attributeTypeId, numberValue])
+  @@index([attributeTypeId, stringValue])
+}
+
+// Generic compatibility rule (attribute vs attribute or vs literal value)
+model CompatibilityRule {
+  id                   String        @id @default(cuid())
+  // Optional scoping by categories (e.g., CPU vs MOTHERBOARD)
+  leftCategoryId       String?
+  rightCategoryId      String?
+  leftAttributeTypeId  String
+  operator             Operator
+  // Either compare to right attribute OR to a literal value
+  rightAttributeTypeId String?
+  compareString        String?
+  compareNumber        Float?
+  note                 String?
+
+  leftCategory   Category?     @relation("LeftCategory", fields: [leftCategoryId], references: [id])
+  rightCategory  Category?     @relation("RightCategory", fields: [rightCategoryId], references: [id])
+  leftAttrType   AttributeType @relation("LeftAttrType", fields: [leftAttributeTypeId], references: [id])
+  rightAttrType  AttributeType?@relation("RightAttrType", fields: [rightAttributeTypeId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([leftCategoryId])
+  @@index([rightCategoryId])
+  @@index([leftAttributeTypeId])
+  @@index([rightAttributeTypeId])
+}
+
+// Orders and Reviews for storefront transactions and feedback
+model Order {
+  id          String       @id @default(cuid())
+  userId      String?
+  user        User?        @relation(fields: [userId], references: [id])
+  customerName String
+  customerEmail String?
+  customerPhone String?
+  shippingAddress String?
+  note        String?
+  status      OrderStatus  @default(PENDING)
+  totalCents  Int
+  items       OrderItem[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  productId  String
+  quantity   Int      @default(1)
+  priceCents Int      // snapshot unit price at time of order
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  rating    Int      // 1..5
+  content   String
+  approved  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+  @@index([userId])
+  @@index([createdAt])
+}
