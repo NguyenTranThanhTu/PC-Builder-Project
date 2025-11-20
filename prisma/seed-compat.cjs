@@ -34,48 +34,153 @@ async function upsertRule(rule) {
 }
 
 async function main() {
-    // ...existing code...
-  // Category IDs
-  const cpuCat = await getCategoryId("cpu");
-  const mbCat = await getCategoryId("mainboard");
-  const gpuCat = await getCategoryId("gpu");
-  const caseCat = await getCategoryId("case");
-  const psuCat = await getCategoryId("psu");
-  const ramCat = await getCategoryId("ram");
-  
-  const MB_RAM_TYPE = await getAttrTypeId("MB_RAM_TYPE");
-  const RAM_TYPE = await getAttrTypeId("RAM_TYPE");
-  const MB_MAX_RAM_SPEED_MHZ = await getAttrTypeId("MB_MAX_RAM_SPEED_MHZ");
-  const RAM_SPEED_MHZ = await getAttrTypeId("RAM_SPEED_MHZ");
+        // --- Mainboard ↔ Case: Form Factor ---
+        const MB_FORM_FACTOR = await getAttrTypeId("MB_FORM_FACTOR");
+        await upsertRule({
+          leftCategoryId: mbCat,
+          rightCategoryId: caseCat,
+          leftAttributeTypeId: MB_FORM_FACTOR,
+          rightAttributeTypeId: CASE_FORM_FACTOR,
+          operator: Operator.EQ,
+          note: "Form factor mainboard phải vừa với case."
+        });
 
-    // RAM ↔ Mainboard compatibility rules
-    await upsertRule({
-      leftCategoryId: ramCat,
-      rightCategoryId: mbCat,
-      leftAttributeTypeId: RAM_TYPE,
-      rightAttributeTypeId: MB_RAM_TYPE,
-      operator: Operator.EQ,
-      note: "Loại RAM phải khớp với Mainboard",
-    });
+        // --- PSU ↔ Case: Form Factor ---
+        const PSU_FORM_FACTOR = await getAttrTypeId("PSU_FORM_FACTOR");
+        await upsertRule({
+          leftCategoryId: psuCat,
+          rightCategoryId: caseCat,
+          leftAttributeTypeId: PSU_FORM_FACTOR,
+          rightAttributeTypeId: CASE_FORM_FACTOR,
+          operator: Operator.EQ,
+          note: "Form factor PSU phải phù hợp với case."
+        });
 
-    // 4b) RAM speed must be <= Mainboard max supported speed
+        // --- RAM ↔ Mainboard: Số khe RAM ---
+        const MB_RAM_SLOTS = await getAttrTypeId("MB_RAM_SLOTS");
+        const RAM_MODULES = await getAttrTypeId("RAM_MODULES");
+        await upsertRule({
+          leftCategoryId: ramCat,
+          rightCategoryId: mbCat,
+          leftAttributeTypeId: RAM_MODULES,
+          rightAttributeTypeId: MB_RAM_SLOTS,
+          operator: Operator.LTE,
+          note: "Số lượng thanh RAM không vượt quá số khe RAM trên mainboard. (Cần cộng tổng số thanh RAM ở backend)"
+        });
+
+        // --- RAM Capacity ↔ Mainboard: Dung lượng tối đa ---
+        const MB_MAX_RAM_GB = await getAttrTypeId("MB_MAX_RAM_GB");
+        const RAM_CAPACITY_GB = await getAttrTypeId("RAM_CAPACITY_GB");
+        await upsertRule({
+          leftCategoryId: ramCat,
+          rightCategoryId: mbCat,
+          leftAttributeTypeId: RAM_CAPACITY_GB,
+          rightAttributeTypeId: MB_MAX_RAM_GB,
+          operator: Operator.LTE,
+          note: "Tổng dung lượng RAM không vượt quá mức mainboard hỗ trợ. (Cần cộng tổng dung lượng RAM ở backend)"
+        });
+    const storageCat = await getCategoryId("storage");
+    const STORAGE_INTERFACE = await getAttrTypeId("STORAGE_INTERFACE");
+    const MB_SATA_PORTS = await getAttrTypeId("MB_SATA_PORTS");
+    const MB_M2_SLOTS = await getAttrTypeId("MB_M2_SLOTS");
+    const STORAGE_FORM_FACTOR = await getAttrTypeId("STORAGE_FORM_FACTOR");
+    const CASE_FORM_FACTOR = await getAttrTypeId("CASE_FORM_FACTOR");
+  // ...existing code...
+    // Category IDs
+    const cpuCat = await getCategoryId("cpu");
+    const mbCat = await getCategoryId("mainboard");
+    const gpuCat = await getCategoryId("gpu");
+    const caseCat = await getCategoryId("case");
+    const psuCat = await getCategoryId("psu");
+    const ramCat = await getCategoryId("ram");
+    const coolerCat = await getCategoryId("cooler");
+
+    // Attribute Type IDs
+    const MB_RAM_TYPE = await getAttrTypeId("MB_RAM_TYPE");
+    const RAM_TYPE = await getAttrTypeId("RAM_TYPE");
+    const MB_MAX_RAM_SPEED_MHZ = await getAttrTypeId("MB_MAX_RAM_SPEED_MHZ");
+    const RAM_SPEED_MHZ = await getAttrTypeId("RAM_SPEED_MHZ");
+    const CPU_SOCKET = await getAttrTypeId("CPU_SOCKET");
+    const MB_SOCKET = await getAttrTypeId("MB_SOCKET");
+    const GPU_LENGTH_MM = await getAttrTypeId("GPU_LENGTH_MM");
+    const CASE_GPU_CLEARANCE_MM = await getAttrTypeId("CASE_GPU_CLEARANCE_MM");
+    const PSU_WATTAGE = await getAttrTypeId("PSU_WATTAGE");
+    const CPU_TDP_WATT = await getAttrTypeId("CPU_TDP_WATT");
+    const GPU_TDP_WATT = await getAttrTypeId("GPU_TDP_WATT");
+    const COOLER_MAX_HEIGHT_MM = await getAttrTypeId("COOLER_MAX_HEIGHT_MM");
+    const CASE_CPU_COOLER_CLEARANCE_MM = await getAttrTypeId("CASE_CPU_COOLER_CLEARANCE_MM");
+    const COOLER_SOCKET_COMPAT = await getAttrTypeId("COOLER_SOCKET_COMPAT");
+
+    // --- Cooler Compatibility Rules ---
+        // --- Storage Compatibility Rules ---
+        // Rule: Storage interface must be supported by mainboard (SATA/NVMe)
+        await upsertRule({
+          leftCategoryId: storageCat,
+          rightCategoryId: mbCat,
+          leftAttributeTypeId: STORAGE_INTERFACE,
+          rightAttributeTypeId: null,
+          operator: Operator.EQ,
+          compareString: "SATA",
+          note: "Ổ lưu trữ SATA chỉ tương thích nếu mainboard có cổng SATA. (Cần kiểm tra MB_SATA_PORTS > 0 ở backend)"
+        });
+        await upsertRule({
+          leftCategoryId: storageCat,
+          rightCategoryId: mbCat,
+          leftAttributeTypeId: STORAGE_INTERFACE,
+          rightAttributeTypeId: null,
+          operator: Operator.EQ,
+          compareString: "NVMe",
+          note: "Ổ lưu trữ NVMe chỉ tương thích nếu mainboard có khe M.2. (Cần kiểm tra MB_M2_SLOTS > 0 ở backend)"
+        });
+        // Rule: Storage form factor phải khớp với case
+        await upsertRule({
+          leftCategoryId: storageCat,
+          rightCategoryId: caseCat,
+          leftAttributeTypeId: STORAGE_FORM_FACTOR,
+          rightAttributeTypeId: CASE_FORM_FACTOR,
+          operator: Operator.EQ,
+          note: "Kích cỡ ổ lưu trữ phải phù hợp với case."
+        });
+    // Rule: Cooler height must be <= Case CPU cooler clearance
     await upsertRule({
-      leftCategoryId: ramCat,
-      rightCategoryId: mbCat,
-      leftAttributeTypeId: RAM_SPEED_MHZ,
-      rightAttributeTypeId: MB_MAX_RAM_SPEED_MHZ,
+      leftCategoryId: coolerCat,
+      rightCategoryId: caseCat,
+      leftAttributeTypeId: COOLER_MAX_HEIGHT_MM,
+      rightAttributeTypeId: CASE_CPU_COOLER_CLEARANCE_MM,
       operator: Operator.LTE,
-      note: "Tốc độ RAM không vượt quá mức Mainboard hỗ trợ",
+      note: "Chiều cao tản nhiệt không vượt quá clearance của Case",
     });
-  // (removed duplicate category declarations)
+    // Rule: Cooler socket must match CPU socket
+    await upsertRule({
+      leftCategoryId: coolerCat,
+      rightCategoryId: cpuCat,
+      leftAttributeTypeId: COOLER_SOCKET_COMPAT,
+      rightAttributeTypeId: CPU_SOCKET,
+      operator: Operator.EQ,
+      note: "Socket tản nhiệt phải khớp với CPU",
+    });
 
-  const CPU_SOCKET = await getAttrTypeId("CPU_SOCKET");
-  const MB_SOCKET = await getAttrTypeId("MB_SOCKET");
-  const GPU_LENGTH_MM = await getAttrTypeId("GPU_LENGTH_MM");
-  const CASE_GPU_CLEARANCE_MM = await getAttrTypeId("CASE_GPU_CLEARANCE_MM");
-  const PSU_WATTAGE = await getAttrTypeId("PSU_WATTAGE");
-  const CPU_TDP_WATT = await getAttrTypeId("CPU_TDP_WATT");
-  const GPU_TDP_WATT = await getAttrTypeId("GPU_TDP_WATT");
+    // --- Other Compatibility Rules ---
+  // Category IDs
+  // RAM ↔ Mainboard compatibility rules
+  await upsertRule({
+    leftCategoryId: ramCat,
+    rightCategoryId: mbCat,
+    leftAttributeTypeId: RAM_TYPE,
+    rightAttributeTypeId: MB_RAM_TYPE,
+    operator: Operator.EQ,
+    note: "Loại RAM phải khớp với Mainboard",
+  });
+
+  // 4b) RAM speed must be <= Mainboard max supported speed
+  await upsertRule({
+    leftCategoryId: ramCat,
+    rightCategoryId: mbCat,
+    leftAttributeTypeId: RAM_SPEED_MHZ,
+    rightAttributeTypeId: MB_MAX_RAM_SPEED_MHZ,
+    operator: Operator.LTE,
+    note: "Tốc độ RAM không vượt quá mức Mainboard hỗ trợ",
+  });
 
   // 1) CPU socket must equal Mainboard socket
   await upsertRule({

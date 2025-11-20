@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
-import { formatVnd, shortNumber } from "./format";
+import { formatVnd } from "@/lib/formatVnd";
+import { shortNumber } from "./format";
 
 export type BarDatum = { label: string; value: number; color?: string };
 

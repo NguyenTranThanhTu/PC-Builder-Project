@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Tooltip from "@/components/Common/Tooltip";
+import { formatVnd } from "@/lib/formatVnd";
 import Link from "next/link";
 
 type Category = { id: string; name: string; slug: string };
@@ -156,7 +157,7 @@ export default function ProductsManager() {
                   <div className="text-gray-500 text-xs">/{p.slug}</div>
                 </td>
                 <td className="py-2 px-3">{p.category?.name || '-'}</td>
-                <td className="py-2 px-3">{(p.priceCents / 100).toLocaleString("vi-VN")} ₫</td>
+                <td className="py-2 px-3">{formatVnd(p.priceCents / 100)}</td>
                 <td className="py-2 px-3">{p.stock}</td>
                 <td className="py-2 px-3">
                   {p.stock === 0 ? (

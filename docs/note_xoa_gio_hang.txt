@@ -1,0 +1,26 @@
+# Ghi chú tính năng: Xóa sản phẩm khỏi giỏ hàng (PC Builder + Cart)
+
+## Flow vận hành
+
+1. **Thêm sản phẩm từ PC Builder:**
+   - Khi chọn sản phẩm ở PC Builder, sản phẩm sẽ được thêm vào giỏ hàng với trường `productId` (string) và `id` (number).
+
+2. **Xóa sản phẩm từ PC Builder:**
+   - Khi xóa sản phẩm ở PC Builder, sẽ gọi `removeItemFromCart(productId)` để xóa sản phẩm khỏi giỏ hàng dựa trên `productId`.
+
+3. **Xóa sản phẩm từ giỏ hàng (Cart):**
+   - Khi xóa sản phẩm ở giao diện giỏ hàng, sẽ gọi `removeItemFromCart(item.productId || item.id)`.
+   - Reducer sẽ kiểm tra:
+     - Nếu truyền vào là `string` (productId): xóa sản phẩm có `productId` trùng hoặc `id` (number) chuyển thành string trùng.
+     - Nếu truyền vào là `number` (id): xóa sản phẩm có `id` trùng.
+   - Đảm bảo xóa được sản phẩm dù được thêm từ PC Builder (có productId) hay từ nơi khác (chỉ có id).
+
+## File liên quan
+- `src/redux/features/cart-slice.ts`: logic xóa sản phẩm khỏi giỏ hàng.
+- `src/components/PCBuilder/PCBuilderClient.tsx`: gọi xóa khi thao tác ở PC Builder.
+- `src/components/Cart/SingleItem.tsx`: gọi xóa khi thao tác ở giao diện giỏ hàng.
+
+## Lưu ý
+- Logic này đảm bảo không ảnh hưởng đến các thao tác thêm/xóa sản phẩm từ các nơi khác trong hệ thống.
+- Nếu sản phẩm có cả `productId` và `id`, sẽ ưu tiên xóa theo `productId`.
+- Nếu chỉ có `id`, vẫn xóa bình thường.

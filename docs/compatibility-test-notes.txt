@@ -1,0 +1,24 @@
+# BuildPC Compatibility Logic - Test & Implementation Steps
+
+## Các bước đã thực hiện
+
+1. Phân tích và seed đầy đủ các rule tương thích (compatibility rules) cho các nhóm linh kiện chính: CPU, Mainboard, RAM, GPU, PSU, Case, Cooler, Storage.
+2. Refactor backend logic (evaluateCompatibility) để hỗ trợ kiểm tra cộng tổng (sum-based) cho các rule như: tổng số thanh RAM, tổng dung lượng RAM, ...
+3. Đảm bảo các rule so sánh trực tiếp (form factor, socket, ...) vẫn hoạt động đúng.
+4. Đề xuất và chuẩn bị bước kiểm thử tự động (unit test) cho logic tương thích.
+
+## Hướng dẫn kiểm thử tự động
+- Tạo file test: `src/lib/compatibility.test.ts`
+- Viết các test case cho từng loại rule:
+  - Test vượt số khe RAM
+  - Test vượt dung lượng RAM
+  - Test form factor không khớp
+  - Test trường hợp hợp lệ
+- Chạy test, kiểm tra kết quả và sửa lỗi nếu có.
+
+## Lưu ý
+- Các test case nên mock dữ liệu sản phẩm, rule và thuộc tính để kiểm tra logic thuần tuý, không phụ thuộc database thật.
+- Có thể mở rộng test cho các rule mới trong tương lai.
+
+---
+# Đã tạo sẵn file test mẫu và test case cơ bản.

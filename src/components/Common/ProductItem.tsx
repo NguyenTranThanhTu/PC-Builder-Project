@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { formatVnd } from "@/lib/formatVnd";
 import Image from "next/image";
 import { Product } from "@/types/product";
 import { useModalContext } from "@/app/context/QuickViewModalContext";
@@ -193,8 +194,8 @@ const ProductItem = ({ item }: { item: Product }) => {
       </h3>
 
       <span className="flex items-center gap-2 font-medium text-lg">
-        <span className="text-dark">${item.discountedPrice}</span>
-        <span className="text-dark-4 line-through">${item.price}</span>
+        <span className="text-dark">{formatVnd(item.discountedPrice)}</span>
+        <span className="text-dark-4 line-through">{formatVnd(item.price)}</span>
       </span>
     </div>
   );

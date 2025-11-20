@@ -42,16 +42,16 @@ const Cart = () => {
                       <p className="text-dark">Price</p>
                     </div>
 
-                    <div className="min-w-[275px]">
+                    <div className="min-w-[275px] ml-8">
                       <p className="text-dark">Quantity</p>
                     </div>
 
-                    <div className="min-w-[200px]">
+                    <div className="min-w-[200px] -ml-2">
                       <p className="text-dark">Subtotal</p>
                     </div>
 
-                    <div className="min-w-[50px]">
-                      <p className="text-dark text-right">Action</p>
+                    <div className="min-w-[50px] -ml-4">
+                      <p className="text-dark text-left">Action</p>
                     </div>
                   </div>
 

@@ -83,6 +83,11 @@ export async function POST(req: NextRequest) {
     json.priceCents = Math.round(json.price * 100);
   }
 
+  // Đặt mặc định status là 'PUBLISHED' nếu không truyền lên
+  if (!json.status) {
+    json.status = "PUBLISHED";
+  }
+
   const parsed = productCreateSchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
@@ -122,7 +127,7 @@ export async function POST(req: NextRequest) {
           imageBlurData: data.imageBlurData ?? null,
           categoryId: data.categoryId,
           featured: data.featured ?? false,
-          status: (data.status as ProductStatus) ?? "DRAFT",
+          status: (data.status as ProductStatus) ?? "PUBLISHED",
         },
       });
 

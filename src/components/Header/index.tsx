@@ -7,6 +7,7 @@ import Dropdown from "./Dropdown";
 import { useAppSelector } from "@/redux/store";
 import { useSelector } from "react-redux";
 import { selectTotalPrice } from "@/redux/features/cart-slice";
+import { formatVnd } from "@/lib/formatVnd";
 import { useCartModalContext } from "@/app/context/CartSidebarModalContext";
 import Image from "next/image";
 
@@ -236,7 +237,7 @@ const Header = () => {
                       cart
                     </span>
                     <p className="font-medium text-custom-sm text-dark">
-                      ${totalPrice}
+                      {formatVnd(totalPrice)}
                     </p>
                   </div>
                 </button>

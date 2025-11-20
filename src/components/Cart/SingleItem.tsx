@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { formatVnd } from "@/lib/formatVnd";
 import { AppDispatch } from "@/redux/store";
 import { useDispatch } from "react-redux";
 import {
@@ -32,29 +33,24 @@ const SingleItem = ({ item }) => {
   };
 
   return (
-    <div className="flex items-center border-t border-gray-3 py-5 px-7.5">
-      <div className="min-w-[400px]">
-        <div className="flex items-center justify-between gap-5">
-          <div className="w-full flex items-center gap-5.5">
-            <div className="flex items-center justify-center rounded-[5px] bg-gray-2 max-w-[80px] w-full h-17.5">
-              <Image width={200} height={200} src={item.imgs?.thumbnails[0]} alt="product" />
-            </div>
+    <div className="flex items-center border-t border-gray-3 py-5 px-7.5 text-center">
 
-            <div>
-              <h3 className="text-dark ease-out duration-200 hover:text-blue">
-                <a href="#"> {item.title} </a>
-              </h3>
-            </div>
-          </div>
+      <div className="min-w-[400px] flex items-center gap-5.5 justify-start">
+        <div className="flex items-center justify-center rounded-[5px] bg-gray-2 max-w-[80px] w-full h-17.5">
+          <Image width={200} height={200} src={item.imgs?.thumbnails[0]} alt="product" />
+        </div>
+        <div>
+          <h3 className="text-dark ease-out duration-200 hover:text-blue">
+            <a href="#"> {item.title} </a>
+          </h3>
         </div>
       </div>
-
-      <div className="min-w-[180px]">
-        <p className="text-dark">${item.discountedPrice}</p>
+      <div className="min-w-[180px] flex items-center justify-start">
+        <p className="text-dark">{formatVnd(item.discountedPrice)}</p>
       </div>
 
-      <div className="min-w-[275px]">
-        <div className="w-max flex items-center rounded-md border border-gray-3">
+      <div className="min-w-[275px] flex items-center pl-2">
+        <div className="flex items-center rounded-md border border-gray-3">
           <button
             onClick={() => handleDecreaseQuantity()}
             aria-label="button for remove product"
@@ -105,8 +101,8 @@ const SingleItem = ({ item }) => {
         </div>
       </div>
 
-      <div className="min-w-[200px]">
-        <p className="text-dark">${item.discountedPrice * quantity}</p>
+      <div className="min-w-[200px] flex items-center pl-6">
+        <p className="text-dark">{formatVnd(item.discountedPrice * quantity)}</p>
       </div>
 
       <div className="min-w-[50px] flex justify-end">

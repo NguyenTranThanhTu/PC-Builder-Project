@@ -6,7 +6,7 @@ type InitialState = {
 };
 
 type CartItem = {
-  id: number;
+  id: string;
   // Optional: DB product id to enable checkout API mapping
   productId?: string;
   title: string;
@@ -49,17 +49,16 @@ export const cart = createSlice({
         });
       }
     },
-    removeItemFromCart: (state, action: PayloadAction<number>) => {
-      const itemId = action.payload;
-      state.items = state.items.filter((item) => item.id !== itemId);
+    removeItemFromCart: (state, action: PayloadAction<string>) => {
+      const id = action.payload;
+      state.items = state.items.filter((item) => item.id !== id);
     },
     updateCartItemQuantity: (
       state,
-      action: PayloadAction<{ id: number; quantity: number }>
+      action: PayloadAction<{ id: string; quantity: number }>
     ) => {
       const { id, quantity } = action.payload;
       const existingItem = state.items.find((item) => item.id === id);
-
       if (existingItem) {
         existingItem.quantity = quantity;
       }

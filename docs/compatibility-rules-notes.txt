@@ -1,0 +1,61 @@
+# Compatibility Rules & Logic Notes
+
+## 1. Mainboard ↔ Case
+- **Rule:** Form factor mainboard phải vừa với case (ATX, Micro-ATX, Mini-ITX).
+- **Seed:** MB_FORM_FACTOR == CASE_FORM_FACTOR (hoặc case hỗ trợ nhiều loại).
+- **Check:** So sánh MB_FORM_FACTOR với CASE_FORM_FACTOR hoặc danh sách form factor mà case hỗ trợ.
+
+## 2. PSU ↔ Case
+- **Rule:** Form factor PSU phải phù hợp với case (ATX, SFX...)
+- **Seed:** PSU_FORM_FACTOR == CASE_FORM_FACTOR (hoặc case hỗ trợ nhiều loại PSU).
+- **Check:** So sánh PSU_FORM_FACTOR với CASE_FORM_FACTOR hoặc danh sách form factor mà case hỗ trợ.
+
+## 3. GPU ↔ PSU
+- **Rule:** PSU phải có đủ đầu cấp nguồn phụ cho GPU (8-pin, 16-pin...)
+- **Seed:** PSU_POWER_CONNECTOR phải chứa GPU_POWER_CONNECTOR.
+- **Check:** Kiểm tra thuộc tính nguồn phụ của PSU có đáp ứng yêu cầu của GPU không.
+
+## 4. Mainboard ↔ Storage
+- **Rule:** Số lượng ổ lưu trữ không vượt quá số cổng/khe hỗ trợ trên mainboard (MB_SATA_PORTS, MB_M2_SLOTS).
+- **Seed:** Tổng số ổ SATA/NVMe <= MB_SATA_PORTS/MB_M2_SLOTS.
+- **Check:** Đếm số lượng ổ cùng loại, so với số cổng/khe trên mainboard.
+
+## 5. RAM ↔ Mainboard
+- **Rule:** Số lượng thanh RAM không vượt quá số khe RAM trên mainboard (RAM_MODULES <= MB_RAM_SLOTS).
+- **Seed:** RAM_MODULES <= MB_RAM_SLOTS.
+- **Check:** Đếm tổng số thanh RAM, so với MB_RAM_SLOTS.
+
+## 6. RAM Capacity ↔ Mainboard
+- **Rule:** Tổng dung lượng RAM không vượt quá MB_MAX_RAM_GB.
+- **Seed:** Tổng RAM_CAPACITY_GB <= MB_MAX_RAM_GB.
+- **Check:** Cộng tổng dung lượng RAM, so với MB_MAX_RAM_GB.
+
+## 7. Cooler ↔ Case
+- **Rule:** Loại tản nhiệt (AIO, Air) phải phù hợp với kích thước case.
+- **Seed:** COOLER_TYPE phải nằm trong danh sách case hỗ trợ.
+- **Check:** So sánh COOLER_TYPE với danh sách case hỗ trợ.
+
+## 8. CPU ↔ Mainboard (Chipset)
+- **Rule:** Chipset mainboard phải hỗ trợ dòng CPU.
+- **Seed:** MB_CHIPSET phải nằm trong danh sách hỗ trợ của CPU_BRAND/GEN.
+- **Check:** Mapping chipset/cpu, kiểm tra MB_CHIPSET có hỗ trợ CPU không.
+
+---
+
+# Hướng dẫn kiểm tra tương thích chi tiết
+- Đối với các rule dạng so sánh số lượng (<=), cần cộng tổng số lượng/thanh/dung lượng thực tế của các sản phẩm đã chọn.
+- Đối với các rule dạng so sánh thuộc tính (== hoặc chứa), so sánh trực tiếp giá trị thuộc tính giữa hai sản phẩm.
+- Đối với các rule dạng mapping (chipset/cpu), cần có bảng mapping hỗ trợ.
+
+# Ghi chú
+- Các rule này nên được seed vào bảng CompatibilityRule để hệ thống tự động kiểm tra khi người dùng chọn linh kiện.
+- Nếu cần kiểm tra nâng cao (ví dụ: tổng số ổ lưu trữ), backend cần xử lý logic cộng tổng và so sánh.
+
+---
+# Đề xuất thực hiện trước
+1. Mainboard ↔ Case (form factor)
+2. PSU ↔ Case (form factor)
+3. RAM ↔ Mainboard (số khe RAM)
+4. RAM Capacity ↔ Mainboard (dung lượng tối đa)
+
+Các rule này phổ biến, dễ seed và kiểm tra, giúp tăng trải nghiệm người dùng rõ rệt.

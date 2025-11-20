@@ -5,9 +5,9 @@ import { prisma } from "@/lib/prisma";
 import ProductItem from "@/components/Common/ProductItem";
 import { toUiProduct } from "@/lib/productAdapter";
 
+import { formatVnd } from "@/lib/formatVnd";
 function VnCurrency({ cents }: { cents: number }) {
-  const amt = cents / 100;
-  return <>{amt.toLocaleString("vi-VN")} ₫</>;
+  return <>{formatVnd(cents / 100)}</>;
 }
 
 // Adapter moved to src/lib/productAdapter.ts

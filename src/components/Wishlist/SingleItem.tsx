@@ -1,4 +1,5 @@
 import React from "react";
+import { formatVnd } from "@/lib/formatVnd";
 import { AppDispatch } from "@/redux/store";
 import { useDispatch } from "react-redux";
 
@@ -70,7 +71,7 @@ const SingleItem = ({ item }) => {
       </div>
 
       <div className="min-w-[205px]">
-        <p className="text-dark">${item.discountedPrice}</p>
+        <p className="text-dark">{formatVnd(item.discountedPrice)}</p>
       </div>
 
       <div className="min-w-[265px]">

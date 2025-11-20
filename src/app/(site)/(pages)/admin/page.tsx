@@ -4,7 +4,7 @@ import SignInWithGoogleButton from "@/components/AdminAuth/SignInWithGoogleButto
 import BarChart from "@/components/Admin/Dashboard/BarChart";
 import RecentOrders from "@/components/Admin/Dashboard/RecentOrders";
 import RecentReviews from "@/components/Admin/Dashboard/RecentReviews";
-import { formatVnd } from "@/components/Admin/Dashboard/format";
+import { formatVnd } from "@/lib/formatVnd";
 import { prisma } from "@/lib/prisma";
 import Image from "next/image";
 import Link from "next/link";

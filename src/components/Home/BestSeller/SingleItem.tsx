@@ -8,6 +8,7 @@ import { updateQuickView } from "@/redux/features/quickView-slice";
 import { addItemToCart } from "@/redux/features/cart-slice";
 import Image from "next/image";
 import Link from "next/link";
+import { formatVnd } from "@/lib/formatVnd";
 import { addItemToWishlist } from "@/redux/features/wishlist-slice";
 
 const SingleItem = ({ item }: { item: Product }) => {
@@ -85,8 +86,8 @@ const SingleItem = ({ item }: { item: Product }) => {
           </h3>
 
           <span className="flex items-center justify-center gap-2 font-medium text-lg">
-            <span className="text-dark">${item.discountedPrice}</span>
-            <span className="text-dark-4 line-through">${item.price}</span>
+            <span className="text-dark">{formatVnd(item.discountedPrice)}</span>
+            <span className="text-dark-4 line-through">{formatVnd(item.price)}</span>
           </span>
         </div>
 
