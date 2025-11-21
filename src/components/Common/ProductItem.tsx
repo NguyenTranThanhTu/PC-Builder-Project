@@ -19,7 +19,13 @@ const ProductItem = ({ item }: { item: Product }) => {
 
   // update the QuickView state
   const handleQuickViewUpdate = () => {
-    dispatch(updateQuickView({ ...item }));
+    // Always pass all required fields explicitly for quick view
+    dispatch(updateQuickView({
+      ...item,
+      description: item.description || "",
+      stock: typeof item.stock === "number" ? item.stock : 0,
+      imageUrl: (item as any).imageUrl || item.imgs?.previews?.[0] || "",
+    }));
   };
 
   // add to cart with productId guard
@@ -118,10 +124,11 @@ const ProductItem = ({ item }: { item: Product }) => {
           </button>
 
           <button
-            onClick={() => handleAddToCart()}
-            className="inline-flex font-medium text-custom-sm py-[7px] px-5 rounded-[5px] bg-blue text-white ease-out duration-200 hover:bg-blue-dark"
+            onClick={handleAddToCart}
+            className={`inline-flex font-medium text-custom-sm py-[7px] px-5 rounded-[5px] bg-blue text-white ease-out duration-200 hover:bg-blue-dark ${item.stock === 0 ? 'opacity-60 cursor-not-allowed' : ''}`}
+            disabled={item.stock === 0}
           >
-            Add to cart
+            {item.stock === 0 ? 'Hết hàng' : 'Add to cart'}
           </button>
 
           <button

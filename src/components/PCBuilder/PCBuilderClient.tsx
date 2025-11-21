@@ -133,7 +133,9 @@ export default function PCBuilderClient() {
     console.log('[PCBuilder] Dispatch addItemToCart:', cartItem);
     dispatch(addItemToCart(cartItem));
     setTimeout(() => {
-      const state = window.__REDUX_DEVTOOLS_EXTENSION__ ? window.__REDUX_DEVTOOLS_EXTENSION__.getState() : null;
+      // Type guard for Redux DevTools Extension
+      const devtools = (window as any).__REDUX_DEVTOOLS_EXTENSION__;
+      const state = devtools ? devtools.getState() : null;
       console.log('[PCBuilder] State sau khi thêm vào cart:', state);
     }, 500);
   }

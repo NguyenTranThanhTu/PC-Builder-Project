@@ -1,3 +1,12 @@
+.asyncGallery button {
+  /* CẢNH BÁO: Rule này sẽ làm TẤT CẢ button bên trong .asyncGallery bị mất màu nền, border, text (font-size: 0). KHÔNG nên dùng selector này nếu có thể, hãy dùng .asyncGallery > .gallery__Button hoặc class riêng cho nút gallery. Nếu cần giữ rule này, mọi nút chức năng khác phải dùng style inline hoặc class riêng với !important để tránh bị ảnh hưởng. */
+}
+/*
+  LƯU Ý QUAN TRỌNG:
+  - Rule .asyncGallery button sẽ làm tất cả button con bị mất màu, mất border, mất text nếu nằm trong .asyncGallery (kể cả khi overlay ẩn hoặc không unmount đúng cách).
+  - Khi tạo nút mới, LUÔN kiểm tra file này hoặc dùng class riêng/style inline !important cho nút quan trọng.
+  - Nếu có thể, hãy sửa selector thành .asyncGallery > .gallery__Button để chỉ ảnh hưởng nút gallery.
+*/
 .asyncGallery {
   position: fixed;
   top: 0;

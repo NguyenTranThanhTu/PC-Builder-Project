@@ -21,7 +21,9 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     },
   });
   if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ product });
+  // Đếm số orderItem liên quan
+  const orderItemCount = await prisma.orderItem.count({ where: { productId: id } });
+  return NextResponse.json({ product: { ...product, orderItemCount } });
 }
 
 // PATCH /api/admin/products/[id]
@@ -67,7 +69,8 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       if (data.stock !== undefined) updateData.stock = data.stock;
       if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl ?? null;
       if (data.imageBlurData !== undefined) updateData.imageBlurData = data.imageBlurData ?? null;
-      if (data.categoryId) updateData.category = { connect: { id: data.categoryId } };
+      // Sửa: chỉ truyền categoryId, không truyền category: { connect: ... } khi updateMany/update
+      if (data.categoryId) updateData.categoryId = data.categoryId;
       if (data.featured !== undefined) updateData.featured = data.featured;
       if (data.status !== undefined) {
         updateData.status = data.status as ProductStatus;
@@ -157,13 +160,12 @@ export async function DELETE(_req: NextRequest, context: { params: Promise<{ id:
       });
       return NextResponse.json({ ok: true, archived: true });
     }
-    // Không có order items vẫn chọn soft-delete để thống nhất
-    const archived = await prisma.product.update({
-      where: { id },
-      data: { status: "ARCHIVED" as ProductStatus, archivedAt: new Date() },
-    });
-    revalidateAfterProductChange(archived.slug);
-    return NextResponse.json({ ok: true, archived: true });
+    // Nếu không có order liên quan, cho phép xóa cứng
+    await prisma.productAttribute.deleteMany({ where: { productId: id } });
+    // Xóa các liên kết khác nếu cần (ví dụ: ảnh, v.v.)
+    await prisma.product.delete({ where: { id } });
+    // Không cần revalidate vì đã xóa hoàn toàn
+    return NextResponse.json({ ok: true, deleted: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Failed to delete" }, { status: 500 });
   }

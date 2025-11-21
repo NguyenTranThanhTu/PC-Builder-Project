@@ -31,9 +31,11 @@ export default function NewProductPage() {
   const [imageBlurData, setImageBlurData] = useState<string | null>(null);
   const [attrTemplates, setAttrTemplates] = useState<AttrTemplate[]>([]);
   const [attributes, setAttributes] = useState<AttrInputState[]>([]);
+  const [attrErrors, setAttrErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{[k:string]:string}>({});
 
   useEffect(() => {
     const run = async () => {
@@ -61,16 +63,70 @@ export default function NewProductPage() {
     );
   }, [categoryId, categories]);
 
+  // Validate nâng cao cho từng trường kỹ thuật phổ biến
   const onAttrChange = useCallback((key: string, value: string) => {
     setAttributes(prev => prev.map(a => {
       if (a.key !== key) return a;
       const template = attrTemplates.find(t => t.key === key);
       if (!template) return a;
+      let err = "";
       if (template.valueType === "STRING") {
+        const validStr = /^[\p{L}0-9 \-]+$/u;
+        if (value.trim() === "") err = "Không được để trống";
+        // Áp dụng cho tất cả trường STRING kỹ thuật (trừ các trường đặc biệt như PCIe Gen, Power Connector)
+        if (!['GPU_PCIE_GEN','GPU_POWER_CONNECTOR'].includes(key)) {
+          if (value.length > 50) err = "Tối đa 50 ký tự";
+          else if (/^\d+$/.test(value.trim())) err = "Không được chỉ toàn số";
+          else if (!validStr.test(value.trim())) err = "Không chứa ký tự đặc biệt";
+        }
+        if (key === "GPU_PCIE_GEN") {
+          const allowed = ["3.0", "4.0", "5.0", "2.0", "1.0"];
+          if (value && !allowed.includes(value.trim())) err = `Chỉ chấp nhận: ${allowed.join(", ")}`;
+        }
+        if (key === "GPU_POWER_CONNECTOR") {
+          if (value && !/^([0-9]+(\+)?)+-pin$/.test(value.trim())) err = "Định dạng ví dụ: 8-pin, 6+2-pin";
+        }
+        setAttrErrors(errors => ({ ...errors, [key]: err }));
         return { ...a, stringValue: value };
       } else {
-        const num = value === "" ? null : Number(value);
-        return { ...a, numberValue: isNaN(num as number) ? null : num };
+        let numVal = value === "" ? null : Number(value);
+        if (value.trim() === "") {
+          err = "Không được để trống";
+        } else if (!/^\d+$/.test(value.trim())) {
+          err = "Chỉ được nhập số nguyên dương";
+        } else if (isNaN(numVal as number)) {
+          err = "Giá trị không hợp lệ";
+        } else {
+          // Validate đặc thù từng trường số kỹ thuật của mọi danh mục
+          if (key === "CPU_CORES" && numVal! > 128) err = "Số nhân CPU tối đa 128";
+          if (key === "CPU_THREADS" && numVal! > 256) err = "Số luồng CPU tối đa 256";
+          if (key === "CPU_BASE_CLOCK_GHZ" && numVal! > 10) err = "Xung cơ bản tối đa 10GHz";
+          if (key === "CPU_BOOST_CLOCK_GHZ" && numVal! > 10) err = "Xung boost tối đa 10GHz";
+          if (key === "CPU_TDP_WATT" && numVal! > 500) err = "TDP CPU tối đa 500W";
+          if (key === "CPU_MAX_MEMORY_SPEED_MHZ" && numVal! > 10000) err = "RAM tối đa 10,000MHz";
+          if (key === "MB_RAM_SLOTS" && numVal! > 16) err = "Số khe RAM tối đa 16";
+          if (key === "MB_MAX_RAM_GB" && numVal! > 2048) err = "RAM tối đa 2048GB";
+          if (key === "MB_MAX_RAM_SPEED_MHZ" && numVal! > 10000) err = "RAM tối đa 10,000MHz";
+          if (key === "MB_PCIEX16_SLOTS" && numVal! > 8) err = "PCIe x16 tối đa 8";
+          if (key === "MB_M2_SLOTS" && numVal! > 8) err = "Khe M.2 tối đa 8";
+          if (key === "MB_SATA_PORTS" && numVal! > 12) err = "Cổng SATA tối đa 12";
+          if (key === "GPU_VRAM_GB" && numVal! > 64) err = "VRAM quá lớn";
+          if (key === "GPU_LENGTH_MM" && numVal! > 600) err = "Chiều dài không hợp lệ";
+          if (key === "GPU_TDP_WATT" && numVal! > 1000) err = "TDP GPU tối đa 1000W";
+          if (key === "CASE_GPU_CLEARANCE_MM" && numVal! > 400) err = "Hở GPU tối đa 400mm";
+          if (key === "CASE_CPU_COOLER_CLEARANCE_MM" && numVal! > 300) err = "Hở tản CPU tối đa 300mm";
+          if (key === "RAM_CAPACITY_GB" && numVal! > 512) err = "Dung lượng RAM tối đa 512GB";
+          if (key === "RAM_SPEED_MHZ" && numVal! > 10000) err = "Tốc độ RAM tối đa 10,000MHz";
+          if (key === "RAM_MODULES" && numVal! > 16) err = "Số thanh RAM tối đa 16";
+          if (key === "RAM_CL" && numVal! > 50) err = "CL tối đa 50";
+          if (key === "PSU_WATTAGE" && numVal! > 2000) err = "Công suất PSU tối đa 2000W";
+          if (key === "STORAGE_CAPACITY_GB" && numVal! > 16384) err = "Dung lượng lưu trữ tối đa 16TB";
+          if (key === "COOLER_TDP_WATT" && numVal! > 1000) err = "Công suất tản tối đa 1000W";
+          if (key === "COOLER_MAX_HEIGHT_MM" && numVal! > 300) err = "Chiều cao tản tối đa 300mm";
+          if (numVal! <= 0) err = "Phải lớn hơn 0";
+        }
+        setAttrErrors(errors => ({ ...errors, [key]: err }));
+        return { ...a, numberValue: isNaN(numVal as number) ? null : numVal };
       }
     }));
   }, [attrTemplates]);
@@ -85,6 +141,7 @@ export default function NewProductPage() {
       const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed");
+      // Luôn lưu path tương đối (ví dụ: /uploads/xxx.jpg)
       setImageUrl(data.url);
       setImageBlurData(data.blurDataUrl);
       setSuccess("Đã upload ảnh");
@@ -95,28 +152,65 @@ export default function NewProductPage() {
     }
   };
 
+  // Validate realtime cho các trường chính
+  const validateField = useCallback((field: string, value: string) => {
+    let err = "";
+    if (field === "name") {
+      if (!value.trim()) err = "Tên sản phẩm bắt buộc";
+    }
+    if (field === "categoryId") {
+      if (!value) err = "Cần chọn danh mục";
+    }
+    if (field === "price") {
+      const p = Number(value);
+      if (isNaN(p) || p < 0) err = "Giá không hợp lệ";
+      else if (p > 2147483647) err = "Giá quá lớn (tối đa 2,147,483,647)";
+    }
+    if (field === "stock") {
+      const s = Number(value);
+      if (isNaN(s) || s < 0) err = "Tồn kho không hợp lệ";
+      else if (s > 2147483647) err = "Tồn kho quá lớn (tối đa 2,147,483,647)";
+    }
+    setFieldErrors(prev => ({ ...prev, [field]: err }));
+    return err;
+  }, []);
+
+  // Validate tổng thể khi submit
   const validateLocal = (): string | null => {
-    if (!name.trim()) return "Tên sản phẩm bắt buộc";
-    if (!categoryId) return "Cần chọn danh mục";
-    const p = Number(price);
-    if (isNaN(p) || p < 0) return "Giá không hợp lệ";
-    const s = Number(stock);
-    if (isNaN(s) || s < 0) return "Tồn kho không hợp lệ";
+    let hasError = false;
+    const newFieldErrors: {[k:string]:string} = {};
+    if (validateField("name", name)) hasError = true;
+    if (validateField("categoryId", categoryId)) hasError = true;
+    if (validateField("price", price)) hasError = true;
+    if (validateField("stock", stock)) hasError = true;
     for (const a of attributes) {
       const tmpl = attrTemplates.find(t => t.key === a.key);
       if (!tmpl) continue;
-      if (tmpl.valueType === "STRING" && (!a.stringValue || a.stringValue === "")) return `Thuộc tính ${a.key} thiếu giá trị`; 
-      if (tmpl.valueType === "NUMBER" && (a.numberValue == null || isNaN(a.numberValue))) return `Thuộc tính ${a.key} thiếu số`; 
+      if (tmpl.valueType === "STRING" && (!a.stringValue || a.stringValue === "")) { setAttrErrors(prev => ({...prev, [a.key]: `Thuộc tính ${a.key} thiếu giá trị`})); hasError = true; }
+      if (tmpl.valueType === "NUMBER" && (a.numberValue == null || isNaN(a.numberValue))) { setAttrErrors(prev => ({...prev, [a.key]: `Thuộc tính ${a.key} thiếu số`})); hasError = true; }
+      if (attrErrors[a.key]) hasError = true;
     }
+    if (hasError) return "Có trường không hợp lệ";
     return null;
   };
 
   const handleSave = async () => {
     setError(null); setSuccess(null);
+    if (!imageUrl) {
+      setError("Bạn phải upload ảnh sản phẩm trước khi lưu!");
+      return;
+    }
     const err = validateLocal();
     if (err) { setError(err); return; }
     setSaving(true);
     try {
+      // Đảm bảo imageUrl là absolute URL nếu là path tương đối
+      let absoluteImageUrl = imageUrl;
+      if (imageUrl && !/^https?:\/\//.test(imageUrl)) {
+        if (typeof window !== 'undefined') {
+          absoluteImageUrl = window.location.origin + imageUrl;
+        }
+      }
       const body = {
         name: name.trim(),
         priceCents: Math.round(Number(price) * 100),
@@ -125,13 +219,24 @@ export default function NewProductPage() {
         featured,
         status,
         description: description || null,
-        imageUrl,
+        imageUrl: absoluteImageUrl,
         imageBlurData,
         attributes: attributes.map(a => ({ key: a.key, stringValue: a.stringValue ?? null, numberValue: a.numberValue ?? null }))
       };
+      console.log('DEBUG gửi lên API:', body);
       const res = await fetch("/api/admin/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Tạo sản phẩm thất bại");
+      if (!res.ok) {
+        // Hiển thị chi tiết lỗi trả về từ API
+        if (data?.error?.fieldErrors) {
+          setError(Object.entries(data.error.fieldErrors).map(([k,v])=>`${k}: ${(v as string[]).join(', ')}`).join(' | '));
+        } else if (typeof data?.error === 'string') {
+          setError(data.error);
+        } else {
+          setError("Tạo sản phẩm thất bại");
+        }
+        return;
+      }
       setSuccess("Tạo sản phẩm thành công");
       setName(""); setPrice(""); setStock("0"); setDescription(""); setAttributes(prev => prev.map(a => ({...a, stringValue: a.stringValue!=null?"":null, numberValue: a.numberValue!=null?0:null })));
     } catch (e: any) {
@@ -142,33 +247,37 @@ export default function NewProductPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
+    <div className="max-w-4xl mx-auto py-8 px-4 min-h-screen overflow-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-dark">Tạo sản phẩm mới</h1>
         <Link href="/admin/products" className="text-sm text-blue hover:underline">Quay lại danh sách</Link>
       </div>
       <div className="bg-white rounded-xl shadow p-6 space-y-6">
-        {error && <div className="text-sm text-red-600">{error}</div>}
+        {error && <div className="text-sm text-red-600 font-semibold" style={{color:'#dc2626'}}>{error}</div>}
         {success && <div className="text-sm text-green-600">{success}</div>}
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">Tên</label>
-            <input className="w-full border rounded px-3 py-2 text-sm" value={name} onChange={e=>setName(e.target.value)} placeholder="VD: CPU Intel i5" />
+            <input className="w-full border rounded px-3 py-2 text-sm" value={name} onChange={e=>{setName(e.target.value); validateField('name', e.target.value);}} placeholder="VD: CPU Intel i5" />
+            {fieldErrors.name && <div className="text-xs text-red-600 mt-1" style={{color:'#dc2626'}}>{fieldErrors.name}</div>}
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Danh mục</label>
-            <select className="w-full border rounded px-3 py-2 text-sm" value={categoryId} onChange={e=>setCategoryId(e.target.value)}>
+            <select className="w-full border rounded px-3 py-2 text-sm" value={categoryId} onChange={e=>{setCategoryId(e.target.value); validateField('categoryId', e.target.value);}}>
               <option value="">-- Chọn --</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
+            {fieldErrors.categoryId && <div className="text-xs text-red-600 mt-1" style={{color:'#dc2626'}}>{fieldErrors.categoryId}</div>}
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Giá (VND)</label>
-            <input className="w-full border rounded px-3 py-2 text-sm" value={price} onChange={e=>setPrice(e.target.value)} placeholder="12990000" />
+            <input className="w-full border rounded px-3 py-2 text-sm" value={price} onChange={e=>{setPrice(e.target.value); validateField('price', e.target.value);}} placeholder="12990000" />
+            {fieldErrors.price && <div className="text-xs text-red-600 mt-1" style={{color:'#dc2626'}}>{fieldErrors.price}</div>}
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Tồn kho</label>
-            <input className="w-full border rounded px-3 py-2 text-sm" value={stock} onChange={e=>setStock(e.target.value)} />
+            <input className="w-full border rounded px-3 py-2 text-sm" value={stock} onChange={e=>{setStock(e.target.value); validateField('stock', e.target.value);}} />
+            {fieldErrors.stock && <div className="text-xs text-red-600 mt-1" style={{color:'#dc2626'}}>{fieldErrors.stock}</div>}
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -213,6 +322,7 @@ export default function NewProductPage() {
             {imageUrl && <span className="text-xs text-green-700">Đã lưu: {imageUrl}</span>}
           </div>
           {imagePreview && <div className="mt-3"><Image src={imagePreview} alt="preview" width={160} height={120} className="rounded border" /></div>}
+          {/* Đã loại bỏ nút Tạo sản phẩm trùng lặp ở đây */}
         </div>
         {attrTemplates.length > 0 && (
           <div>
@@ -224,9 +334,21 @@ export default function NewProductPage() {
                   <div key={t.key} className="space-y-1">
                     <label className="block text-xs font-medium">{t.label}</label>
                     {t.valueType === "STRING" ? (
-                      <input className="w-full border rounded px-2 py-1 text-xs" value={st?.stringValue || ""} onChange={e=>onAttrChange(t.key, e.target.value)} />
+                      <>
+                        <input className="w-full border rounded px-2 py-1 text-xs" value={st?.stringValue || ""} onChange={e=>onAttrChange(t.key, e.target.value)} />
+                        {attrErrors[t.key] && <div className="text-xs text-red-600 font-semibold mt-1" style={{color:'#dc2626'}}>{attrErrors[t.key]}</div>}
+                      </>
                     ) : (
-                      <input className="w-full border rounded px-2 py-1 text-xs" value={st?.numberValue ?? ""} onChange={e=>onAttrChange(t.key, e.target.value)} />
+                      <>
+                        <input
+                          className="w-full border rounded px-2 py-1 text-xs"
+                          value={st?.numberValue ?? ""}
+                          onChange={e=>onAttrChange(t.key, e.target.value)}
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                        />
+                        {attrErrors[t.key] && <div className="text-xs text-red-600 font-semibold mt-1" style={{color:'#dc2626'}}>{attrErrors[t.key]}</div>}
+                      </>
                     )}
                   </div>
                 );
@@ -234,11 +356,19 @@ export default function NewProductPage() {
             </div>
           </div>
         )}
-        <div className="flex justify-end">
-          <button onClick={handleSave} disabled={saving} className="px-6 py-2 rounded bg-purple-600 text-white text-sm font-medium disabled:opacity-50">
-            {saving?"Đang lưu...":"Tạo sản phẩm"}
-          </button>
-        </div>
+        {/* Đã đưa nút Tạo sản phẩm lên trên để kiểm tra */}
+
+      {/* Nút Tạo sản phẩm duy nhất, test border và bg */}
+      <div className="flex justify-end mt-8">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving || !imageUrl}
+          style={{ border: '2px solid #1a7f37', background: saving || !imageUrl ? '#e5e7eb' : '#22c55e', color: saving || !imageUrl ? '#888' : '#fff', fontWeight: 700, fontSize: 16, borderRadius: 8, padding: '12px 32px' }}
+        >
+          {saving ? "Đang lưu..." : "Tạo sản phẩm"}
+        </button>
+      </div>
       </div>
     </div>
   );

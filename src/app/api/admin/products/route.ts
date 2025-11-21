@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
   const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get("pageSize") || "20", 10)));
   const q = searchParams.get("q")?.trim() || "";
   const categorySlug = searchParams.get("category") || undefined;
+  const categoryId = searchParams.get("categoryId") || undefined;
   const featuredParam = searchParams.get("featured");
   const statusParam = searchParams.get("status") || undefined; // DRAFT|PUBLISHED|ARCHIVED
   const sortField = searchParams.get("sort") === "price" ? "priceCents" : "createdAt";
@@ -25,7 +26,11 @@ export async function GET(req: NextRequest) {
   const where: Prisma.ProductWhereInput = {};
   if (featuredParam === "true") where.featured = true;
   if (featuredParam === "false") where.featured = false;
-  if (categorySlug) where.category = { slug: categorySlug };
+  if (categoryId) {
+    where.categoryId = categoryId;
+  } else if (categorySlug) {
+    where.category = { slug: categorySlug };
+  }
   if (statusParam) {
     where.status = statusParam as ProductStatus;
   } else {
@@ -128,6 +133,7 @@ export async function POST(req: NextRequest) {
           categoryId: data.categoryId,
           featured: data.featured ?? false,
           status: (data.status as ProductStatus) ?? "PUBLISHED",
+          archivedAt: null,
         },
       });
 

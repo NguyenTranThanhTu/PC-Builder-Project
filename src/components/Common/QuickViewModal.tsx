@@ -6,6 +6,7 @@ import { AppDispatch, useAppSelector } from "@/redux/store";
 import { addItemToCart } from "@/redux/features/cart-slice";
 import { useDispatch } from "react-redux";
 import Image from "next/image";
+import { formatVnd } from "@/lib/formatVnd";
 import { usePreviewSlider } from "@/app/context/PreviewSliderContext";
 import { resetQuickView } from "@/redux/features/quickView-slice";
 import { updateproductDetails } from "@/redux/features/product-details";
@@ -140,6 +141,7 @@ const QuickViewModal = () => {
                       </svg>
                     </button>
 
+                    {/* Ảnh chính xác từ admin: ưu tiên previews, thumbnails, imageUrl, img, fallback */}
                     {product?.imgs?.previews?.[activePreview] ? (
                       <Image
                         src={product.imgs.previews[activePreview]}
@@ -147,7 +149,35 @@ const QuickViewModal = () => {
                         width={400}
                         height={400}
                       />
-                    ) : null}
+                    ) : product?.imgs?.thumbnails?.[activePreview] ? (
+                      <Image
+                        src={product.imgs.thumbnails[activePreview]}
+                        alt="products-details"
+                        width={400}
+                        height={400}
+                      />
+                    ) : product?.imageUrl ? (
+                      <Image
+                        src={product.imageUrl}
+                        alt="products-details"
+                        width={400}
+                        height={400}
+                      />
+                    ) : product?.img ? (
+                      <Image
+                        src={product.img}
+                        alt="products-details"
+                        width={400}
+                        height={400}
+                      />
+                    ) : (
+                      <Image
+                        src="/images/products/product-1-sm-1.png"
+                        alt="products-details"
+                        width={400}
+                        height={400}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
@@ -289,11 +319,11 @@ const QuickViewModal = () => {
                     <g clipPath="url(#clip0_375_9221)">
                       <path
                         d="M10 0.5625C4.78125 0.5625 0.5625 4.78125 0.5625 10C0.5625 15.2188 4.78125 19.4688 10 19.4688C15.2188 19.4688 19.4688 15.2188 19.4688 10C19.4688 4.78125 15.2188 0.5625 10 0.5625ZM10 18.0625C5.5625 18.0625 1.96875 14.4375 1.96875 10C1.96875 5.5625 5.5625 1.96875 10 1.96875C14.4375 1.96875 18.0625 5.59375 18.0625 10.0312C18.0625 14.4375 14.4375 18.0625 10 18.0625Z"
-                        fill="#22AD5C"
+                        fill={product?.stock > 0 ? "#22AD5C" : "#ccc"}
                       />
                       <path
                         d="M12.6875 7.09374L8.9688 10.7187L7.2813 9.06249C7.00005 8.78124 6.56255 8.81249 6.2813 9.06249C6.00005 9.34374 6.0313 9.78124 6.2813 10.0625L8.2813 12C8.4688 12.1875 8.7188 12.2812 8.9688 12.2812C9.2188 12.2812 9.4688 12.1875 9.6563 12L13.6875 8.12499C13.9688 7.84374 13.9688 7.40624 13.6875 7.12499C13.4063 6.84374 12.9688 6.84374 12.6875 7.09374Z"
-                        fill="#22AD5C"
+                        fill={product?.stock > 0 ? "#22AD5C" : "#ccc"}
                       />
                     </g>
                     <defs>
@@ -302,14 +332,14 @@ const QuickViewModal = () => {
                       </clipPath>
                     </defs>
                   </svg>
-
-                  <span className="font-medium text-dark"> In Stock </span>
+                  <span className="font-medium text-dark">
+                    {product?.stock > 0 ? `In Stock (${product.stock})` : "Out of Stock"}
+                  </span>
                 </div>
               </div>
 
               <p>
-                Lorem Ipsum is simply dummy text of the printing and typesetting
-                industry. Lorem Ipsum has.
+                {product?.description || "Không có mô tả cho sản phẩm này."}
               </p>
 
               <div className="flex flex-wrap justify-between gap-5 mt-6 mb-7.5">
@@ -320,11 +350,13 @@ const QuickViewModal = () => {
 
                   <span className="flex items-center gap-2">
                     <span className="font-semibold text-dark text-xl xl:text-heading-4">
-                      ${product.discountedPrice}
+                      {formatVnd(product.discountedPrice)}
                     </span>
-                    <span className="font-medium text-dark-4 text-lg xl:text-2xl line-through">
-                      ${product.price}
-                    </span>
+                    {product.price > product.discountedPrice && (
+                      <span className="font-medium text-dark-4 text-lg xl:text-2xl line-through">
+                        {formatVnd(product.price)}
+                      </span>
+                    )}
                   </span>
                 </div>
 
@@ -399,14 +431,13 @@ const QuickViewModal = () => {
                 <button
                   disabled={quantity === 0 && true}
                   onClick={() => handleAddToCart()}
-                  className={`inline-flex font-medium text-white bg-blue py-3 px-7 rounded-md ease-out duration-200 hover:bg-blue-dark
-                  `}
+                  className={`inline-flex font-medium text-white bg-blue py-3 px-7 rounded-md ease-out duration-200 hover:bg-blue-dark`}
                 >
                   Add to Cart
                 </button>
 
                 <button
-                  className={`inline-flex items-center gap-2 font-medium text-white bg-dark py-3 px-6 rounded-md ease-out duration-200 hover:bg-opacity-95 `}
+                  className={`inline-flex items-center gap-2 font-medium text-white bg-dark py-3 px-6 rounded-md ease-out duration-200 hover:bg-opacity-95`}
                 >
                   <svg
                     className="fill-current"
@@ -425,6 +456,32 @@ const QuickViewModal = () => {
                   </svg>
                   Add to Wishlist
                 </button>
+
+                {/* Nút Xem chi tiết */}
+                {product?.productSlug && (
+                  <a
+                    href={`/shop-details/${product.productSlug}`}
+                    className="inline-flex items-center gap-2 font-medium text-white bg-green py-3 px-6 rounded-md ease-out duration-200 hover:bg-green-dark focus:outline-none focus:ring-2 focus:ring-green-400"
+                    style={{ textDecoration: 'none' }}
+                  >
+                    <svg
+                      className="fill-current"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        clipRule="evenodd"
+                        d="M10 3.33325C5.3975 3.33325 1.66667 7.06408 1.66667 11.6666C1.66667 12.1269 2.03958 12.4999 2.5 12.4999C2.96042 12.4999 3.33333 12.1269 3.33333 11.6666C3.33333 8.31825 6.01859 5.83325 10 5.83325C13.9814 5.83325 16.6667 8.31825 16.6667 11.6666C16.6667 12.1269 17.0396 12.4999 17.5 12.4999C17.9604 12.4999 18.3333 12.1269 18.3333 11.6666C18.3333 7.06408 14.6025 3.33325 10 3.33325ZM10 8.33325C8.15905 8.33325 6.66667 9.82563 6.66667 11.6666C6.66667 13.5076 8.15905 14.9999 10 14.9999C11.841 14.9999 13.3333 13.5076 13.3333 11.6666C13.3333 9.82563 11.841 8.33325 10 8.33325ZM10 13.3333C9.07953 13.3333 8.33333 12.5871 8.33333 11.6666C8.33333 10.7462 9.07953 9.99992 10 9.99992C10.9205 9.99992 11.6667 10.7462 11.6667 11.6666C11.6667 12.5871 10.9205 13.3333 10 13.3333Z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                    Xem chi tiết
+                  </a>
+                )}
               </div>
             </div>
           </div>

@@ -1,3 +1,7 @@
+/*
+  NOTE: Đã kiểm tra, file này KHÔNG có rule button toàn cục, KHÔNG có rule * hoặc button ghi đè màu nền, màu chữ, border cho button.
+  Nếu vẫn lỗi, kiểm tra các file CSS khác hoặc build Tailwind.
+*/
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

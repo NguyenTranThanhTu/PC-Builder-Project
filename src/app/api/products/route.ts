@@ -20,7 +20,7 @@ export async function GET(req: Request) {
     ];
   }
 
-  const [total, items] = await Promise.all([
+  const [total, products] = await Promise.all([
     prisma.product.count({ where }),
     prisma.product.findMany({
       where,
@@ -32,12 +32,32 @@ export async function GET(req: Request) {
         priceCents: true,
         imageUrl: true,
         imageBlurData: true,
+        description: true,
+        stock: true,
         category: { select: { slug: true, name: true } },
       },
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
   ]);
+
+  // Map DB products to UI Product shape, ensuring description, stock, imageUrl are present
+  const items = products.map((p) => ({
+    title: p.name || "Unnamed Product",
+    reviews: 0,
+    price: typeof p.priceCents === "number" ? p.priceCents / 100 : 0,
+    discountedPrice: typeof p.priceCents === "number" ? p.priceCents / 100 : 0,
+    id: p.id,
+    imgs: { thumbnails: [p.imageUrl || ""], previews: [p.imageUrl || ""] },
+    blurDataURL: p.imageBlurData || undefined,
+    productId: p.id,
+    productSlug: p.slug,
+    specSummary: undefined,
+    description: p.description || "",
+    stock: typeof p.stock === "number" ? p.stock : 0,
+    imageUrl: p.imageUrl || "",
+    category: p.category,
+  }));
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   return NextResponse.json({ items, pagination: { page, pageSize, total, pageCount } });

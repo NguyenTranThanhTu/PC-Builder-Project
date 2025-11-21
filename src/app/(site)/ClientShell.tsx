@@ -50,9 +50,9 @@ export default function ClientShell({ children }: { children: React.ReactNode })
                 <>
                   <QuickViewModal />
                   <CartSidebarModal />
-                  <PreviewSliderModal />
-                  <ScrollToTop />
-                  <Footer />
+                  {/* <PreviewSliderModal /> */}
+                  {/* <ScrollToTop /> */}
+                  {/* <Footer /> */}
                 </>
               )}
             </PreviewSliderProvider>

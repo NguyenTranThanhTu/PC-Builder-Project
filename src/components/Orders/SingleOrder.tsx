@@ -126,12 +126,12 @@ const SingleOrder = ({ orderItem, smallView }: any) => {
         </div>
       )}
 
-      <OrderModal
+      {/* <OrderModal
         showDetails={showDetails}
         showEdit={showEdit}
         toggleModal={toggleModal}
         order={orderItem}
-      />
+      /> */}
     </>
   );
 };

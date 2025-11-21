@@ -24,14 +24,13 @@ export function toUiProduct(p: any): UiProduct {
     discountedPrice: price, // Nếu sau này có discountPriceCents có thể thay thế
     id: hashToNumber(p.id || "missing"),
     imgs: { thumbnails: [img], previews: [img] },
-    // @ts-ignore blur placeholder
     blurDataURL: p.imageBlurData || undefined,
-    // @ts-ignore bản gốc id dùng cho order
     productId: p.id,
-    // @ts-ignore slug cho route động
     productSlug: p.slug,
-    // @ts-ignore spec summary (optional on listings)
-    specSummary: buildSpecSummary(p)
+    specSummary: buildSpecSummary(p),
+    description: p.description || "",
+    stock: typeof p.stock === "number" ? p.stock : 0,
+    imageUrl: p.imageUrl || img,
   } as any;
 }
 

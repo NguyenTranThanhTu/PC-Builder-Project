@@ -12,13 +12,27 @@ import { formatVnd } from "@/lib/formatVnd";
 import Image from "next/image";
 
 const SingleGridItem = ({ item }: { item: Product }) => {
+    // Helper: build absolute URL for image if needed
+    const getFullImageUrl = (img: string) => {
+      if (!img) return "/images/products/product-1-sm-1.png";
+      if (img.startsWith("http://") || img.startsWith("https://")) return img;
+      if (typeof window !== "undefined") return window.location.origin + img;
+      // fallback for SSR: return as is (may need further handling)
+      return img;
+    };
   const { openModal } = useModalContext();
 
   const dispatch = useDispatch<AppDispatch>();
 
   // update the QuickView state
   const handleQuickViewUpdate = () => {
-    dispatch(updateQuickView({ ...item }));
+    // Always pass all required fields explicitly for quick view
+    dispatch(updateQuickView({
+      ...item,
+      description: item.description || "",
+      stock: typeof item.stock === "number" ? item.stock : 0,
+      imageUrl: item.imageUrl || item.imgs?.previews?.[0] || "",
+    }));
   };
 
   // add to cart
@@ -60,13 +74,14 @@ const SingleGridItem = ({ item }: { item: Product }) => {
     <div className="group">
       <div className="relative overflow-hidden flex items-center justify-center rounded-lg bg-white shadow-1 min-h-[270px] mb-4">
         <Image
-          src={item.imgs?.previews?.[0] || "/images/products/product-1-sm-1.png"}
+          src={getFullImageUrl(item.imgs?.previews?.[0])}
           alt={item.title || "product image"}
           width={250}
           height={250}
           placeholder={(item as any).blurDataURL ? "blur" : "empty"}
           blurDataURL={(item as any).blurDataURL}
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 250px"
+          priority
         />
 
         <div className="absolute left-0 bottom-0 translate-y-full w-full flex items-center justify-center gap-2.5 pb-5 ease-linear duration-200 group-hover:translate-y-0">
@@ -103,10 +118,11 @@ const SingleGridItem = ({ item }: { item: Product }) => {
           </button>
 
           <button
-            onClick={() => handleAddToCart()}
-            className="inline-flex font-medium text-custom-sm py-[7px] px-5 rounded-[5px] bg-blue text-white ease-out duration-200 hover:bg-blue-dark"
+            onClick={handleAddToCart}
+            className={`inline-flex font-medium text-custom-sm py-[7px] px-5 rounded-[5px] bg-blue text-white ease-out duration-200 hover:bg-blue-dark ${item.stock === 0 ? 'opacity-60 cursor-not-allowed' : ''}`}
+            disabled={item.stock === 0}
           >
-            Add to cart
+            {item.stock === 0 ? 'Hết hàng' : 'Add to cart'}
           </button>
 
           <button

@@ -14,4 +14,8 @@ export type Product = {
     thumbnails: string[];
     previews: string[];
   };
+  // Thông tin bổ sung từ admin/backend
+  description?: string;
+  stock?: number;
+  imageUrl?: string;
 };
