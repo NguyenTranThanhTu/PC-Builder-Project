@@ -67,7 +67,7 @@ export default async function ProductDetailPage({ params }: any) {
   }));
 
   return (
-    <main className="max-w-[1000px] mx-auto px-4 py-10">
+    <main className="max-w-[1000px] mx-auto px-4 py-10 mt-32">
       <div className="flex flex-col md:flex-row gap-10">
         <div className="md:w-1/2">
           <div className="bg-gray-2 rounded-lg p-4 shadow-1 flex items-center justify-center min-h-[320px]">

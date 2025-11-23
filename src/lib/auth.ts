@@ -1,5 +1,6 @@
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import GoogleProvider from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials";
 import type { NextAuthOptions, Session } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
@@ -16,6 +17,7 @@ function parseAdminEmails(): string[] {
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
+
 const providers = [] as NonNullable<NextAuthOptions["providers"]>;
 if (googleClientId && googleClientSecret) {
   providers.push(
@@ -31,18 +33,58 @@ if (googleClientId && googleClientSecret) {
   );
 }
 
+// Add CredentialsProvider for email/password login
+providers.push(
+  CredentialsProvider({
+    name: "Credentials",
+    credentials: {
+      email: { label: "Email", type: "email", placeholder: "Enter your email" },
+      password: { label: "Password", type: "password", placeholder: "Enter your password" },
+    },
+    async authorize(credentials) {
+      if (!credentials?.email || !credentials?.password) return null;
+      // Find user by email
+      const user = await prisma.user.findUnique({ where: { email: credentials.email } });
+      if (!user || !user.hashedPassword) return null;
+      // Compare password (assume bcrypt)
+      const bcrypt = require("bcryptjs");
+      const isValid = await bcrypt.compare(credentials.password, user.hashedPassword);
+      if (!isValid) return null;
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        image: user.image,
+      };
+    },
+  })
+);
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "database" },
+  session: { strategy: "jwt" },
   providers,
   callbacks: {
-    async session({ session, user }) {
-      if (session.user) {
-        // expose id and role to client session
-        // @ts-expect-error add custom fields
-        session.user.id = user.id;
-        // @ts-expect-error add custom fields
-        session.user.role = user.role;
+    async jwt({ token, user }) {
+      // Khi đăng nhập, merge thông tin user vào token
+      if (user) {
+        token.id = user.id;
+        token.role = user.role;
+        token.name = user.name;
+        token.email = user.email;
+        token.image = user.image;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // Luôn truyền đủ thông tin từ token về client
+      if (session.user && token) {
+        session.user.id = token.id;
+        session.user.role = token.role;
+        session.user.name = token.name;
+        session.user.email = token.email;
+        session.user.image = token.image;
       }
       return session;
     },

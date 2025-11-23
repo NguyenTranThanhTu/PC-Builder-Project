@@ -10,7 +10,7 @@ export default function SignInWithGoogleButton({ callbackUrl = "/admin", classNa
   return (
     <button
       type="button"
-      onClick={() => signIn("google", { callbackUrl })}
+      onClick={() => signIn("google", { callbackUrl: "/admin/products" })}
       className={
         className ||
         "w-full inline-flex items-center justify-center gap-2 rounded-md bg-blue text-white py-2.5 px-4 font-medium shadow hover:bg-blue/90 focus:outline-none focus:ring-2 focus:ring-blue/50"

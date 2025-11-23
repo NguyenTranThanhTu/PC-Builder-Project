@@ -1,5 +1,5 @@
 import React from "react";
-import { formatVnd } from "./format";
+import { formatVnd } from "@/lib/formatVnd";
 
 type Order = {
   id: string;
