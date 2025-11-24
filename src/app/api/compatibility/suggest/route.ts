@@ -57,14 +57,19 @@ export async function POST(req: Request) {
         },
       });
 
-      const passing: any[] = [];
-      for (const candidate of pool) {
-        const testIds = [...productIds, candidate.id];
-        // eslint-disable-next-line no-await-in-loop
-        const res = await evaluateCompatibility(testIds);
-        if (res.ok) {
-          passing.push(candidate);
-          if (passing.length >= maxPerCategory) break;
+      let passing: any[] = [];
+      if (!productIds || productIds.length === 0) {
+        // Nếu chưa chọn gì, trả về luôn danh sách sản phẩm
+        passing = pool.slice(0, maxPerCategory);
+      } else {
+        for (const candidate of pool) {
+          const testIds = [...productIds, candidate.id];
+          // eslint-disable-next-line no-await-in-loop
+          const res = await evaluateCompatibility(testIds);
+          if (res.ok) {
+            passing.push(candidate);
+            if (passing.length >= maxPerCategory) break;
+          }
         }
       }
 

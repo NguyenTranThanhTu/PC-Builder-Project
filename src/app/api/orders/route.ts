@@ -3,6 +3,50 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+// GET /api/orders: List orders with pagination and filtering
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const page = Number(searchParams.get("page")) || 1;
+    const pageSize = Number(searchParams.get("pageSize")) || 10;
+    const status = searchParams.get("status") || undefined;
+    const q = searchParams.get("q") || undefined;
+
+    const where: any = {};
+    if (status) where.status = status;
+    if (q) {
+      where.OR = [
+        { customerName: { contains: q, mode: "insensitive" } },
+        { customerEmail: { contains: q, mode: "insensitive" } },
+        { customerPhone: { contains: q, mode: "insensitive" } },
+        { shippingAddress: { contains: q, mode: "insensitive" } },
+      ];
+    }
+
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: { items: true, user: true },
+      }),
+      prisma.order.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      orders,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    });
+  } catch (err) {
+    console.error("List orders error", err);
+    return NextResponse.json({ error: "Lấy danh sách đơn hàng thất bại" }, { status: 500 });
+  }
+}
+
 type OrderItemInput = { productId: string; quantity: number };
 
 export async function POST(req: Request) {

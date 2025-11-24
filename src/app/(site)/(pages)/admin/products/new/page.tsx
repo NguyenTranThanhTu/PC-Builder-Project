@@ -92,8 +92,8 @@ export default function NewProductPage() {
         let numVal = value === "" ? null : Number(value);
         if (value.trim() === "") {
           err = "Không được để trống";
-        } else if (!/^\d+$/.test(value.trim())) {
-          err = "Chỉ được nhập số nguyên dương";
+        } else if (!/^\d*\.?\d+$/.test(value.trim())) {
+          err = "Chỉ được nhập số thực dương, ví dụ: 4.80, 3.25, 2.5";
         } else if (isNaN(numVal as number)) {
           err = "Giá trị không hợp lệ";
         } else {
@@ -179,16 +179,23 @@ export default function NewProductPage() {
   const validateLocal = (): string | null => {
     let hasError = false;
     const newFieldErrors: {[k:string]:string} = {};
-    if (validateField("name", name)) hasError = true;
-    if (validateField("categoryId", categoryId)) hasError = true;
-    if (validateField("price", price)) hasError = true;
-    if (validateField("stock", stock)) hasError = true;
+    if (validateField("name", name)) { hasError = true; console.log(`Lỗi trường chính: name - ${fieldErrors.name}`); }
+    if (validateField("categoryId", categoryId)) { hasError = true; console.log(`Lỗi trường chính: categoryId - ${fieldErrors.categoryId}`); }
+    if (validateField("price", price)) { hasError = true; console.log(`Lỗi trường chính: price - ${fieldErrors.price}`); }
+    if (validateField("stock", stock)) { hasError = true; console.log(`Lỗi trường chính: stock - ${fieldErrors.stock}`); }
     for (const a of attributes) {
       const tmpl = attrTemplates.find(t => t.key === a.key);
       if (!tmpl) continue;
-      if (tmpl.valueType === "STRING" && (!a.stringValue || a.stringValue === "")) { setAttrErrors(prev => ({...prev, [a.key]: `Thuộc tính ${a.key} thiếu giá trị`})); hasError = true; }
-      if (tmpl.valueType === "NUMBER" && (a.numberValue == null || isNaN(a.numberValue))) { setAttrErrors(prev => ({...prev, [a.key]: `Thuộc tính ${a.key} thiếu số`})); hasError = true; }
-      if (attrErrors[a.key]) hasError = true;
+      if (tmpl.valueType === "STRING" && (!a.stringValue || a.stringValue === "")) { setAttrErrors(prev => ({...prev, [a.key]: `Thuộc tính ${a.key} thiếu giá trị`})); hasError = true; console.log(`Lỗi thuộc tính kỹ thuật: key=${a.key}, value=${a.stringValue}, lỗi=Thiếu giá trị`); }
+      if (tmpl.valueType === "NUMBER") {
+        const value = a.numberValue?.toString() ?? "";
+        if (value.trim() === "" || a.numberValue == null || isNaN(a.numberValue)) {
+          setAttrErrors(prev => ({...prev, [a.key]: `Thuộc tính ${a.key} thiếu số`})); hasError = true; console.log(`Lỗi thuộc tính kỹ thuật: key=${a.key}, value=${a.numberValue}, lỗi=Thiếu số`);
+        } else if (!/^\d*\.?\d+$/.test(value.trim())) {
+          setAttrErrors(prev => ({...prev, [a.key]: `Chỉ được nhập số thực dương, ví dụ: 4.80, 3.25, 2.5`})); hasError = true; console.log(`Lỗi thuộc tính kỹ thuật: key=${a.key}, value=${a.numberValue}, lỗi=Định dạng số thực dương`);
+        }
+      }
+      if (attrErrors[a.key]) { hasError = true; console.log(`Lỗi thuộc tính kỹ thuật: key=${a.key}, lỗi=${attrErrors[a.key]}`); }
     }
     if (hasError) return "Có trường không hợp lệ";
     return null;
@@ -342,10 +349,10 @@ export default function NewProductPage() {
                       <>
                         <input
                           className="w-full border rounded px-2 py-1 text-xs"
+                          type="number"
+                          step="any"
                           value={st?.numberValue ?? ""}
                           onChange={e=>onAttrChange(t.key, e.target.value)}
-                          inputMode="numeric"
-                          pattern="[0-9]*"
                         />
                         {attrErrors[t.key] && <div className="text-xs text-red-600 font-semibold mt-1" style={{color:'#dc2626'}}>{attrErrors[t.key]}</div>}
                       </>

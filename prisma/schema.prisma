@@ -35,8 +35,9 @@ enum Operator {
 // Order status for eCommerce flow
 enum OrderStatus {
   PENDING     // Đang chờ
-  PROCESSING  // Đã xử lý
+  PROCESSING  // Đang xử lý
   SHIPPED     // Đang giao
+  COMPLETED   // Đã hoàn thành
   CANCELLED   // Huỷ
 }
 

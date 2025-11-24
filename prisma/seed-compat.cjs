@@ -34,58 +34,19 @@ async function upsertRule(rule) {
 }
 
 async function main() {
-        // --- Mainboard ↔ Case: Form Factor ---
-        const MB_FORM_FACTOR = await getAttrTypeId("MB_FORM_FACTOR");
-        await upsertRule({
-          leftCategoryId: mbCat,
-          rightCategoryId: caseCat,
-          leftAttributeTypeId: MB_FORM_FACTOR,
-          rightAttributeTypeId: CASE_FORM_FACTOR,
-          operator: Operator.EQ,
-          note: "Form factor mainboard phải vừa với case."
-        });
+    // Seed các AttributeType còn thiếu nếu chưa có
+    async function ensureAttrType({ key, label, valueType = "STRING" }) {
+      const exists = await prisma.attributeType.findUnique({ where: { key } });
+      if (!exists) {
+        await prisma.attributeType.create({ data: { key, label, valueType } });
+      }
+    }
 
-        // --- PSU ↔ Case: Form Factor ---
-        const PSU_FORM_FACTOR = await getAttrTypeId("PSU_FORM_FACTOR");
-        await upsertRule({
-          leftCategoryId: psuCat,
-          rightCategoryId: caseCat,
-          leftAttributeTypeId: PSU_FORM_FACTOR,
-          rightAttributeTypeId: CASE_FORM_FACTOR,
-          operator: Operator.EQ,
-          note: "Form factor PSU phải phù hợp với case."
-        });
+    await ensureAttrType({ key: "CPU_CHIPSET_SUPPORT", label: "Chipset CPU hỗ trợ", valueType: "STRING" });
+    await ensureAttrType({ key: "MB_CHIPSET", label: "Chipset Mainboard", valueType: "STRING" });
+    await ensureAttrType({ key: "GPU_POWER_CONNECTOR", label: "Đầu nguồn phụ GPU", valueType: "STRING" });
+    await ensureAttrType({ key: "PSU_POWER_CONNECTOR", label: "Đầu nguồn phụ PSU", valueType: "STRING" });
 
-        // --- RAM ↔ Mainboard: Số khe RAM ---
-        const MB_RAM_SLOTS = await getAttrTypeId("MB_RAM_SLOTS");
-        const RAM_MODULES = await getAttrTypeId("RAM_MODULES");
-        await upsertRule({
-          leftCategoryId: ramCat,
-          rightCategoryId: mbCat,
-          leftAttributeTypeId: RAM_MODULES,
-          rightAttributeTypeId: MB_RAM_SLOTS,
-          operator: Operator.LTE,
-          note: "Số lượng thanh RAM không vượt quá số khe RAM trên mainboard. (Cần cộng tổng số thanh RAM ở backend)"
-        });
-
-        // --- RAM Capacity ↔ Mainboard: Dung lượng tối đa ---
-        const MB_MAX_RAM_GB = await getAttrTypeId("MB_MAX_RAM_GB");
-        const RAM_CAPACITY_GB = await getAttrTypeId("RAM_CAPACITY_GB");
-        await upsertRule({
-          leftCategoryId: ramCat,
-          rightCategoryId: mbCat,
-          leftAttributeTypeId: RAM_CAPACITY_GB,
-          rightAttributeTypeId: MB_MAX_RAM_GB,
-          operator: Operator.LTE,
-          note: "Tổng dung lượng RAM không vượt quá mức mainboard hỗ trợ. (Cần cộng tổng dung lượng RAM ở backend)"
-        });
-    const storageCat = await getCategoryId("storage");
-    const STORAGE_INTERFACE = await getAttrTypeId("STORAGE_INTERFACE");
-    const MB_SATA_PORTS = await getAttrTypeId("MB_SATA_PORTS");
-    const MB_M2_SLOTS = await getAttrTypeId("MB_M2_SLOTS");
-    const STORAGE_FORM_FACTOR = await getAttrTypeId("STORAGE_FORM_FACTOR");
-    const CASE_FORM_FACTOR = await getAttrTypeId("CASE_FORM_FACTOR");
-  // ...existing code...
     // Category IDs
     const cpuCat = await getCategoryId("cpu");
     const mbCat = await getCategoryId("mainboard");
@@ -94,9 +55,61 @@ async function main() {
     const psuCat = await getCategoryId("psu");
     const ramCat = await getCategoryId("ram");
     const coolerCat = await getCategoryId("cooler");
+    const storageCat = await getCategoryId("storage");
 
     // Attribute Type IDs
+    const MB_FORM_FACTOR = await getAttrTypeId("MB_FORM_FACTOR");
+    const CASE_FORM_FACTOR = await getAttrTypeId("CASE_FORM_FACTOR");
+    const PSU_FORM_FACTOR = await getAttrTypeId("PSU_FORM_FACTOR");
+    const MB_RAM_SLOTS = await getAttrTypeId("MB_RAM_SLOTS");
+    const RAM_MODULES = await getAttrTypeId("RAM_MODULES");
+    const MB_MAX_RAM_GB = await getAttrTypeId("MB_MAX_RAM_GB");
+    const RAM_CAPACITY_GB = await getAttrTypeId("RAM_CAPACITY_GB");
+    const STORAGE_INTERFACE = await getAttrTypeId("STORAGE_INTERFACE");
+    const MB_SATA_PORTS = await getAttrTypeId("MB_SATA_PORTS");
+    const MB_M2_SLOTS = await getAttrTypeId("MB_M2_SLOTS");
+    const STORAGE_FORM_FACTOR = await getAttrTypeId("STORAGE_FORM_FACTOR");
     const MB_RAM_TYPE = await getAttrTypeId("MB_RAM_TYPE");
+
+    // --- Mainboard ↔ Case: Form Factor ---
+    await upsertRule({
+      leftCategoryId: mbCat,
+      rightCategoryId: caseCat,
+      leftAttributeTypeId: MB_FORM_FACTOR,
+      rightAttributeTypeId: CASE_FORM_FACTOR,
+      operator: Operator.EQ,
+      note: "Form factor mainboard phải vừa với case."
+    });
+
+    // --- PSU ↔ Case: Form Factor ---
+    await upsertRule({
+      leftCategoryId: psuCat,
+      rightCategoryId: caseCat,
+      leftAttributeTypeId: PSU_FORM_FACTOR,
+      rightAttributeTypeId: CASE_FORM_FACTOR,
+      operator: Operator.EQ,
+      note: "Form factor PSU phải phù hợp với case."
+    });
+
+    // --- RAM ↔ Mainboard: Số khe RAM ---
+    await upsertRule({
+      leftCategoryId: ramCat,
+      rightCategoryId: mbCat,
+      leftAttributeTypeId: RAM_MODULES,
+      rightAttributeTypeId: MB_RAM_SLOTS,
+      operator: Operator.LTE,
+      note: "Số lượng thanh RAM không vượt quá số khe RAM trên mainboard. (Cần cộng tổng số thanh RAM ở backend)"
+    });
+
+    // --- RAM Capacity ↔ Mainboard: Dung lượng tối đa ---
+    await upsertRule({
+      leftCategoryId: ramCat,
+      rightCategoryId: mbCat,
+      leftAttributeTypeId: RAM_CAPACITY_GB,
+      rightAttributeTypeId: MB_MAX_RAM_GB,
+      operator: Operator.LTE,
+      note: "Tổng dung lượng RAM không vượt quá mức mainboard hỗ trợ. (Cần cộng tổng dung lượng RAM ở backend)"
+    });
     const RAM_TYPE = await getAttrTypeId("RAM_TYPE");
     const MB_MAX_RAM_SPEED_MHZ = await getAttrTypeId("MB_MAX_RAM_SPEED_MHZ");
     const RAM_SPEED_MHZ = await getAttrTypeId("RAM_SPEED_MHZ");
@@ -221,6 +234,31 @@ async function main() {
     operator: Operator.LTE, // GPU TDP (left) <= PSU Wattage (right)
     note: "Công suất PSU phải >= TDP GPU",
   });
+
+    // --- BỔ SUNG RULE MAPPING ---
+    // 4) Chipset mainboard phải hỗ trợ dòng CPU
+    const MB_CHIPSET = await getAttrTypeId("MB_CHIPSET");
+    const CPU_CHIPSET_SUPPORT = await getAttrTypeId("CPU_CHIPSET_SUPPORT");
+    await upsertRule({
+      leftCategoryId: mbCat,
+      rightCategoryId: cpuCat,
+      leftAttributeTypeId: MB_CHIPSET,
+      rightAttributeTypeId: CPU_CHIPSET_SUPPORT,
+      operator: Operator.EQ, // MB_CHIPSET phải nằm trong danh sách CPU hỗ trợ
+      note: "Chipset mainboard phải nằm trong danh sách hỗ trợ của CPU",
+    });
+
+    // 5) PSU phải có đủ đầu cấp nguồn phụ cho GPU
+    const PSU_POWER_CONNECTOR = await getAttrTypeId("PSU_POWER_CONNECTOR");
+    const GPU_POWER_CONNECTOR = await getAttrTypeId("GPU_POWER_CONNECTOR");
+    await upsertRule({
+      leftCategoryId: psuCat,
+      rightCategoryId: gpuCat,
+      leftAttributeTypeId: PSU_POWER_CONNECTOR,
+      rightAttributeTypeId: GPU_POWER_CONNECTOR,
+      operator: Operator.EQ, // PSU_POWER_CONNECTOR phải chứa GPU_POWER_CONNECTOR
+      note: "PSU phải có đủ đầu cấp nguồn phụ cho GPU",
+    });
 }
 
 main()

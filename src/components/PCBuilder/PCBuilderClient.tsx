@@ -117,17 +117,37 @@ export default function PCBuilderClient() {
   }
 
   function selectProduct(slug: string, p: SimpleProduct) {
-    setSelected((prev) => ({ ...prev, [slug]: p }));
+    // Chuyển đổi dữ liệu về đúng định dạng SimpleProduct nếu thiếu name hoặc priceCents
+    const prod: any = p;
+    const safeProduct: SimpleProduct = {
+      id: prod.id,
+      name: prod.name || prod.title || "Sản phẩm không tên",
+      slug: prod.slug || prod.productSlug || "",
+      priceCents: typeof prod.priceCents === "number" ? prod.priceCents : Math.round((prod.price || prod.discountedPrice || 0) * 100),
+      imageUrl: prod.imageUrl || (prod.imgs?.thumbnails?.[0] ?? null),
+      imageBlurData: prod.imageBlurData ?? null,
+    };
+    setSelected((prev) => ({ ...prev, [slug]: safeProduct }));
     // Đảm bảo id là string
-    const idStr = String(p.id);
-    console.log('[PCBuilder] Chọn sản phẩm:', p);
+    const idStr = String(safeProduct.id);
+    // Debug chi tiết sản phẩm được chọn
+    console.log('[PCBuilder] Chọn sản phẩm:', {
+      id: safeProduct.id,
+      name: safeProduct.name,
+      priceCents: safeProduct.priceCents,
+      imageUrl: safeProduct.imageUrl,
+      slug: safeProduct.slug,
+      full: safeProduct
+    });
+    if (!safeProduct.name) console.warn(`[PCBuilder] Sản phẩm thiếu tên:`, safeProduct);
+    if (!safeProduct.priceCents && safeProduct.priceCents !== 0) console.warn(`[PCBuilder] Sản phẩm thiếu giá tiền:`, safeProduct);
     const cartItem = {
       id: idStr,
-      title: p.name,
-      price: p.priceCents / 100,
-      discountedPrice: p.priceCents / 100,
+      title: safeProduct.name,
+      price: safeProduct.priceCents / 100,
+      discountedPrice: safeProduct.priceCents / 100,
       quantity: 1,
-      imgs: p.imageUrl ? { thumbnails: [p.imageUrl], previews: [p.imageUrl] } : undefined,
+      imgs: safeProduct.imageUrl ? { thumbnails: [safeProduct.imageUrl], previews: [safeProduct.imageUrl] } : undefined,
       productId: idStr,
     };
     console.log('[PCBuilder] Dispatch addItemToCart:', cartItem);
@@ -257,15 +277,26 @@ export default function PCBuilderClient() {
                         <button className="px-3 py-2 rounded-full bg-gradient-to-r from-blue to-cyan text-white font-bold shadow-lg border-2 border-blue-light hover:scale-105 hover:shadow-blue/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue" onClick={() => runSearch(slug)} title="Tìm linh kiện">Tìm</button>
                       </div>
                       <div className="grid grid-cols-1 gap-2 max-h-48 overflow-auto">
-                        {(searchResults[slug] || []).map((p) => (
-                          <button key={p.id} onClick={() => selectProduct(slug, p)} className="flex items-center gap-3 text-left border rounded p-2 hover:bg-blue-50 transition group animate-fade-in" title={`Chọn ${p.name}`}>
-                            <img src={p.imageUrl || "/images/products/product-1-sm-1.png"} className="w-12 h-12 object-cover rounded" />
-                            <div>
-                              <div className="text-sm font-medium text-gray-800">{p.name}</div>
-                              <div className="text-xs text-gray-500">{formatVnd(price(p))}</div>
-                            </div>
-                          </button>
-                        ))}
+                        {(searchResults[slug] || []).map((p) => {
+                          const prod: any = p;
+                          const safeProduct: SimpleProduct = {
+                            id: prod.id,
+                            name: prod.name || prod.title || "Sản phẩm không tên",
+                            slug: prod.slug || prod.productSlug || "",
+                            priceCents: typeof prod.priceCents === "number" ? prod.priceCents : Math.round((prod.price || prod.discountedPrice || 0) * 100),
+                            imageUrl: prod.imageUrl || (prod.imgs?.thumbnails?.[0] ?? null),
+                            imageBlurData: prod.imageBlurData ?? null,
+                          };
+                          return (
+                            <button key={safeProduct.id} onClick={() => selectProduct(slug, safeProduct)} className="flex items-center gap-3 text-left border rounded p-2 hover:bg-blue-50 transition group animate-fade-in" title={`Chọn ${safeProduct.name}`}>
+                              <img src={safeProduct.imageUrl || "/images/products/product-1-sm-1.png"} className="w-12 h-12 object-cover rounded" />
+                              <div>
+                                <div className="text-sm font-medium text-gray-800">{safeProduct.name}</div>
+                                <div className="text-xs text-gray-500">{formatVnd(safeProduct.priceCents / 100)}</div>
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
                       {/* Gợi ý linh kiện nếu có */}
                       {suggestions[slug]?.length ? (

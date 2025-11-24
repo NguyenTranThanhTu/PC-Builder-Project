@@ -1,5 +1,5 @@
-.asyncGallery button {
-  /* CẢNH BÁO: Rule này sẽ làm TẤT CẢ button bên trong .asyncGallery bị mất màu nền, border, text (font-size: 0). KHÔNG nên dùng selector này nếu có thể, hãy dùng .asyncGallery > .gallery__Button hoặc class riêng cho nút gallery. Nếu cần giữ rule này, mọi nút chức năng khác phải dùng style inline hoặc class riêng với !important để tránh bị ảnh hưởng. */
+.asyncGallery > .gallery__Button {
+  /* Chỉ ảnh hưởng đến nút gallery, không làm trắng các nút chức năng khác */
 }
 /*
   LƯU Ý QUAN TRỌNG:
@@ -83,7 +83,7 @@
   display: block;
 }
 
-.asyncGallery button {
+.asyncGallery > .gallery__Button {
   background-color: transparent;
   border: 0;
   outline: 0;

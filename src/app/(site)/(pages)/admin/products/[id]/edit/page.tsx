@@ -173,8 +173,8 @@ export default function EditProductPage({ params }: any) {
         let numVal = value === "" ? null : Number(value);
         if (value.trim() === "") {
           err = "Không được để trống";
-        } else if (!/^\d+$/.test(value.trim())) {
-          err = "Chỉ được nhập số nguyên dương";
+        } else if (!/^\d*\.?\d+$/.test(value.trim())) {
+          err = "Chỉ được nhập số thực dương, ví dụ: 4.80, 3.25, 2.5";
         } else if (isNaN(numVal as number)) {
           err = "Giá trị không hợp lệ";
         } else {
@@ -249,12 +249,12 @@ export default function EditProductPage({ params }: any) {
         }
       } else {
         let numVal = value === "" ? null : Number(value);
-        if (value.trim() === "") {
+        if (value.trim() === "" || numVal == null || isNaN(numVal)) {
           err = "Không được để trống";
-        } else if (!/^\d+$/.test(value.trim())) {
-          err = "Chỉ được nhập số nguyên dương";
-        } else if (isNaN(numVal as number)) {
-          err = "Giá trị không hợp lệ";
+        } else if (!/^\d*\.?\d+$/.test(value.trim())) {
+          err = "Chỉ được nhập số thực dương, ví dụ: 4.80, 3.25, 2.5";
+        } else if (numVal <= 0) {
+          err = "Phải lớn hơn 0";
         } else {
           if (a.key === "CPU_CORES" && numVal! > 128) err = "Số nhân CPU tối đa 128";
           if (a.key === "CPU_THREADS" && numVal! > 256) err = "Số luồng CPU tối đa 256";
@@ -281,10 +281,16 @@ export default function EditProductPage({ params }: any) {
           if (a.key === "STORAGE_CAPACITY_GB" && numVal! > 16384) err = "Dung lượng lưu trữ tối đa 16TB";
           if (a.key === "COOLER_TDP_WATT" && numVal! > 1000) err = "Công suất tản tối đa 1000W";
           if (a.key === "COOLER_MAX_HEIGHT_MM" && numVal! > 300) err = "Chiều cao tản tối đa 300mm";
-          if (numVal! <= 0) err = "Phải lớn hơn 0";
         }
       }
       if (err) { newFieldErrors[a.key] = err; hasAttrError = true; }
+      if (err) {
+        console.log(`Lỗi thuộc tính kỹ thuật: key=${a.key}, value=${value}, lỗi=${err}`);
+      }
+    });
+    // Log lỗi tổng hợp các trường chính
+    Object.entries(newFieldErrors).forEach(([k,v]) => {
+      if (v) console.log(`Lỗi trường chính: ${k} - ${v}`);
     });
     setFieldErrors(newFieldErrors);
     if (hasError || hasAttrError) return "Có trường không hợp lệ";
@@ -611,7 +617,7 @@ export default function EditProductPage({ params }: any) {
                     {t.valueType === "STRING" ? (
                       <input className={`w-full border rounded px-2 py-1 text-xs ${err ? 'border-red-500' : ''}`} value={st?.stringValue || ""} onChange={e=>onAttrChange(t.key, e.target.value)} />
                     ) : (
-                      <input className={`w-full border rounded px-2 py-1 text-xs ${err ? 'border-red-500' : ''}`} value={st?.numberValue ?? ""} onChange={e=>onAttrChange(t.key, e.target.value)} />
+                      <input className={`w-full border rounded px-2 py-1 text-xs ${err ? 'border-red-500' : ''}`} type="number" step="any" value={st?.numberValue ?? ""} onChange={e=>onAttrChange(t.key, e.target.value)} />
                     )}
                     {err && <div className="text-xs text-red-600 font-semibold mt-1" style={{color:'#dc2626'}}>{err}</div>}
                   </div>
