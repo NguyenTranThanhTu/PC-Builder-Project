@@ -203,6 +203,9 @@ model Order {
   customerEmail String?
   customerPhone String?
   shippingAddress String?
+  city         String?
+  country      String?
+  paymentMethod String?
   note        String?
   status      OrderStatus  @default(PENDING)
   totalCents  Int

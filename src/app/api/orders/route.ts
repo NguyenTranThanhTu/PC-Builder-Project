@@ -29,7 +29,19 @@ export async function GET(req: Request) {
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { items: true, user: true },
+        include: {
+          items: {
+            include: {
+              product: {
+                select: {
+                  name: true,
+                  imageUrl: true,
+                },
+              },
+            },
+          },
+          user: true,
+        },
       }),
       prisma.order.count({ where }),
     ]);
@@ -53,12 +65,16 @@ export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     const body = await req.json();
+    console.log("[Order API] Body:", body);
     const {
       items,
       customerName,
       customerEmail,
       customerPhone,
       shippingAddress,
+      city,
+      country,
+      paymentMethod,
       note,
     }: {
       items: OrderItemInput[];
@@ -66,6 +82,9 @@ export async function POST(req: Request) {
       customerEmail?: string;
       customerPhone?: string;
       shippingAddress?: string;
+      city?: string;
+      country?: string;
+      paymentMethod?: string;
       note?: string;
     } = body;
 
@@ -114,38 +133,45 @@ export async function POST(req: Request) {
       userId = u?.id;
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const order = await tx.order.create({
-        data: {
-          userId,
-          customerName,
-          customerEmail,
-          customerPhone,
-          shippingAddress,
-          note,
-          status: "PENDING",
-          totalCents,
-          items: {
-            create: sanitized.map((it) => ({
-              productId: it.productId,
-              quantity: it.quantity,
-              priceCents: priceMap.get(it.productId)!,
-            })),
+    let result;
+    try {
+      result = await prisma.$transaction(async (tx) => {
+        const order = await tx.order.create({
+          data: {
+            user: userId ? { connect: { id: userId } } : undefined,
+            customerName,
+            customerEmail,
+            customerPhone,
+            shippingAddress,
+            city,
+            country,
+            paymentMethod,
+            note,
+            status: "PENDING",
+            totalCents,
+            items: {
+              create: sanitized.map((it) => ({
+                productId: it.productId,
+                quantity: it.quantity,
+                priceCents: priceMap.get(it.productId)!,
+              })),
+            },
           },
-        },
-        include: { items: true },
-      });
-
-      // Decrement stock for each item
-      for (const it of sanitized) {
-        await tx.product.update({
-          where: { id: it.productId },
-          data: { stock: { decrement: it.quantity } },
+          include: { items: true },
         });
-      }
-
-      return order;
-    });
+        // Decrement stock for each item
+        for (const it of sanitized) {
+          await tx.product.update({
+            where: { id: it.productId },
+            data: { stock: { decrement: it.quantity } },
+          });
+        }
+        return order;
+      });
+    } catch (err) {
+      console.error("[Order API] Error creating order:", err);
+      throw err;
+    }
 
     return NextResponse.json({ orderId: result.id, totalCents: result.totalCents }, { status: 201 });
   } catch (err) {

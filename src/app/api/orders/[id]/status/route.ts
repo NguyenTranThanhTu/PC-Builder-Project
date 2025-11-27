@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function PUT(req: Request, context: { params: { id: string } }) {
   try {
-    const { id } = context.params;
+    const { id } = (await context).params;
     const { status } = await req.json();
     if (!id || !status) {
       return NextResponse.json({ error: "Thiếu thông tin" }, { status: 400 });

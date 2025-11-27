@@ -15,6 +15,9 @@ function OrderDetailModal({ order, onClose }: { order: any, onClose: () => void 
         <div className="mb-2"><span className="font-semibold">Email:</span> {order.customerEmail || order.user?.email || "-"}</div>
         <div className="mb-2"><span className="font-semibold">Số điện thoại:</span> {order.customerPhone || "-"}</div>
         <div className="mb-2"><span className="font-semibold">Địa chỉ giao hàng:</span> {order.shippingAddress || "-"}</div>
+        <div className="mb-2"><span className="font-semibold">Thành phố:</span> {order.city || "-"}</div>
+        <div className="mb-2"><span className="font-semibold">Quốc gia/Khu vực:</span> {order.country || "-"}</div>
+        <div className="mb-2"><span className="font-semibold">Phương thức thanh toán:</span> {order.paymentMethod === "bank" ? "Chuyển khoản ngân hàng" : order.paymentMethod === "cash" ? "Thanh toán khi nhận hàng" : order.paymentMethod || "-"}</div>
         <div className="mb-2"><span className="font-semibold">Trạng thái:</span> {order.status}</div>
         <div className="mb-2"><span className="font-semibold">Tổng tiền:</span> {order.totalCents ? (order.totalCents/100).toLocaleString() : "0"}₫</div>
         <div className="mb-2"><span className="font-semibold">Ngày tạo:</span> {order.createdAt ? new Date(order.createdAt).toLocaleString() : "-"}</div>
@@ -32,8 +35,13 @@ function OrderDetailModal({ order, onClose }: { order: any, onClose: () => void 
             <tbody>
               {order.items?.map((item: any, idx: number) => (
                 <tr key={item.id || idx}>
-                  <td className="px-2 py-1 border">{item.productId}</td>
-                  <td className="px-2 py-1 border">{item.quantity}</td>
+                  <td className="px-2 py-1 border flex items-center gap-2">
+                    {item.product?.imageUrl && (
+                      <img src={item.product.imageUrl} alt={item.product?.name || "Sản phẩm"} className="w-10 h-10 object-cover rounded" />
+                    )}
+                    <span>{item.product?.name || item.productId}</span>
+                  </td>
+                  <td className="px-2 py-1 border text-center">{item.quantity}</td>
                   <td className="px-2 py-1 border">{item.priceCents ? (item.priceCents / 100).toLocaleString() : "0"}₫</td>
                 </tr>
               ))}
