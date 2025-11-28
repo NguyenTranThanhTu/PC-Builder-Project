@@ -104,6 +104,7 @@ const Checkout = () => {
       // Lưu thông tin đơn hàng vào localStorage để hiển thị ở trang xác nhận
       if (typeof window !== "undefined") {
         window.localStorage.setItem("lastOrderInfo", JSON.stringify(payload));
+        console.log("[Checkout] Saved lastOrderInfo:", payload);
       }
       dispatch(removeAllItemsFromCart());
       router.push("/mail-success");

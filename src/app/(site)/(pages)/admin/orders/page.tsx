@@ -11,8 +11,11 @@ function OrderDetailModal({ order, onClose }: { order: any, onClose: () => void 
         <button onClick={onClose} className="absolute top-2 right-2 text-gray-500 hover:text-red-500 text-xl">×</button>
         <h2 className="text-lg font-bold mb-2">Chi tiết đơn hàng</h2>
         <div className="mb-2"><span className="font-semibold">Mã đơn:</span> <span className="font-mono">{order.id}</span></div>
-        <div className="mb-2"><span className="font-semibold">Khách hàng:</span> {order.customerName || order.user?.name || order.customerEmail || "-"}</div>
-        <div className="mb-2"><span className="font-semibold">Email:</span> {order.customerEmail || order.user?.email || "-"}</div>
+        {order.user?.name && (
+          <div className="mb-2"><span className="font-semibold">Tài khoản đặt hàng:</span> {order.user.name}</div>
+        )}
+        <div className="mb-2"><span className="font-semibold">Tên người nhận:</span> {order.customerName || "-"}</div>
+        <div className="mb-2"><span className="font-semibold">Email:</span> {order.user?.email || order.customerEmail || "-"}</div>
         <div className="mb-2"><span className="font-semibold">Số điện thoại:</span> {order.customerPhone || "-"}</div>
         <div className="mb-2"><span className="font-semibold">Địa chỉ giao hàng:</span> {order.shippingAddress || "-"}</div>
         <div className="mb-2"><span className="font-semibold">Thành phố:</span> {order.city || "-"}</div>

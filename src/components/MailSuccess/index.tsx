@@ -1,15 +1,22 @@
+"use client";
 import React from "react";
 import Breadcrumb from "../Common/Breadcrumb";
 import Link from "next/link";
 
 const MailSuccess = () => {
   // Giả lập lấy thông tin đơn hàng từ localStorage/sessionStorage (cần thay bằng API thực tế nếu có)
-  let orderInfo: any = {};
-  if (typeof window !== "undefined") {
-    try {
-      orderInfo = JSON.parse(window.localStorage.getItem("lastOrderInfo") || "{}");
-    } catch {}
-  }
+  const [orderInfo, setOrderInfo] = React.useState<any>({});
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const info = JSON.parse(window.localStorage.getItem("lastOrderInfo") || "{}");
+        setOrderInfo(info);
+        console.log("[MailSuccess] Loaded lastOrderInfo:", info);
+      } catch (err) {
+        console.log("[MailSuccess] Error reading lastOrderInfo:", err);
+      }
+    }
+  }, []);
   // Format VND
   const formatVnd = (amount: number) => amount?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
   return (

@@ -173,7 +173,12 @@ export async function POST(req: Request) {
       throw err;
     }
 
-    return NextResponse.json({ orderId: result.id, totalCents: result.totalCents }, { status: 201 });
+    // Lấy lại order vừa tạo, include user
+    const order = await prisma.order.findUnique({
+      where: { id: result.id },
+      include: { user: true, items: true },
+    });
+    return NextResponse.json({ order }, { status: 201 });
   } catch (err) {
     console.error("Create order error", err);
     return NextResponse.json({ error: "Tạo đơn hàng thất bại" }, { status: 500 });

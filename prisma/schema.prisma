@@ -1,3 +1,18 @@
+// Notification for order status changes
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  orderId    String
+  type       String   // confirmed, delivering, completed, canceled
+  message    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([orderId])
+}
 // Prisma schema for NextAuth + eCommerce (electronics components)
 // DB: PostgreSQL
 
@@ -60,6 +75,7 @@ model User {
   sessions      Session[]
   orders        Order[]
   reviews       Review[]
+  notifications Notification[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -209,9 +225,10 @@ model Order {
   note        String?
   status      OrderStatus  @default(PENDING)
   totalCents  Int
-  items       OrderItem[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  items         OrderItem[]
+  notifications Notification[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   @@index([userId])
   @@index([status])

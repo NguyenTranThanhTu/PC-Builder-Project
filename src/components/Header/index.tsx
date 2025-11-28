@@ -11,6 +11,7 @@ import { selectTotalPrice } from "@/redux/features/cart-slice";
 import { formatVnd } from "@/lib/formatVnd";
 import { useCartModalContext } from "@/app/context/CartSidebarModalContext";
 import Image from "next/image";
+import NotificationBell from "@/components/Notification/NotificationBell";
 
 const Header = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -169,17 +170,18 @@ const Header = () => {
                 {/* Hiển thị user nếu đã đăng nhập, nếu chưa thì hiện nút đăng nhập */}
                 {session && session.user ? (
                   <div className="flex items-center gap-2.5">
-                    {/* Luôn hiển thị icon user, không dùng avatar mặc định */}
+                    {/* Icon user + tên user */}
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="rounded-full bg-gray-2">
                       <circle cx="12" cy="12" r="12" fill="#e5e7eb" />
                       <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="#9ca3af" />
                     </svg>
                     <div>
                       <span className="block text-2xs text-dark-4 uppercase">Xin chào</span>
-                      <p className="font-medium text-custom-sm text-dark">
-                        {session.user.name || session.user.email}
-                      </p>
+                      <p className="font-medium text-custom-sm text-dark">{session.user.name || session.user.email}</p>
                     </div>
+                    {/* Icon bell notification */}
+                    <NotificationBell />
+                    {/* Nút đăng xuất */}
                     <button
                       onClick={() => signOut()}
                       className="ml-2 px-3 py-1 rounded bg-gray-2 text-dark hover:bg-blue hover:text-white text-xs"
