@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { useSession } from "next-auth/react";
 import Breadcrumb from "../Common/Breadcrumb";
 import Image from "next/image";
 import AddressModal from "./AddressModal";
@@ -17,6 +18,8 @@ const MyAccount = () => {
     setAddressModal(false);
   };
 
+  const { data: session } = useSession();
+  const user = session?.user;
   return (
     <>
       <Breadcrumb title={"My Account"} pages={["my account"]} />
@@ -30,7 +33,7 @@ const MyAccount = () => {
                 <div className="hidden lg:flex flex-wrap items-center gap-5 py-6 px-4 sm:px-7.5 xl:px-9 border-r xl:border-r-0 xl:border-b border-gray-3">
                   <div className="max-w-[64px] w-full h-16 rounded-full overflow-hidden">
                     <Image
-                      src="/images/users/user-04.jpg"
+                      src={user?.image || "/images/users/user-04.jpg"}
                       alt="user"
                       width={64}
                       height={64}
@@ -39,9 +42,9 @@ const MyAccount = () => {
 
                   <div>
                     <p className="font-medium text-dark mb-0.5">
-                      James Septimus
+                      {user?.name || user?.email || "User"}
                     </p>
-                    <p className="text-custom-xs">Member Since Sep 2020</p>
+                    <p className="text-custom-xs">{user?.email}</p>
                   </div>
                 </div>
 
@@ -590,8 +593,9 @@ const MyAccount = () => {
                         name="firstName"
                         id="firstName"
                         placeholder="Jhon"
-                        value="Jhon"
+                        defaultValue="Jhon"
                         className="rounded-md border border-gray-3 bg-gray-1 placeholder:text-dark-5 w-full py-2.5 px-5 outline-none duration-200 focus:border-transparent focus:shadow-input focus:ring-2 focus:ring-blue/20"
+                        readOnly
                       />
                     </div>
 
@@ -605,8 +609,9 @@ const MyAccount = () => {
                         name="lastName"
                         id="lastName"
                         placeholder="Deo"
-                        value="Deo"
+                        defaultValue="Deo"
                         className="rounded-md border border-gray-3 bg-gray-1 placeholder:text-dark-5 w-full py-2.5 px-5 outline-none duration-200 focus:border-transparent focus:shadow-input focus:ring-2 focus:ring-blue/20"
+                        readOnly
                       />
                     </div>
                   </div>
@@ -636,7 +641,7 @@ const MyAccount = () => {
                             d="M2.41469 5.03569L2.41467 5.03571L2.41749 5.03846L7.76749 10.2635L8.0015 10.492L8.23442 10.2623L13.5844 4.98735L13.5844 4.98735L13.5861 4.98569C13.6809 4.89086 13.8199 4.89087 13.9147 4.98569C14.0092 5.08024 14.0095 5.21864 13.9155 5.31345C13.9152 5.31373 13.915 5.31401 13.9147 5.31429L8.16676 10.9622L8.16676 10.9622L8.16469 10.9643C8.06838 11.0606 8.02352 11.0667 8.00039 11.0667C7.94147 11.0667 7.89042 11.0522 7.82064 10.9991L2.08526 5.36345C1.99127 5.26865 1.99154 5.13024 2.08609 5.03569C2.18092 4.94086 2.31986 4.94086 2.41469 5.03569Z"
                             fill=""
                             stroke=""
-                            stroke-width="0.666667"
+                            strokeWidth="0.666667"
                           />
                         </svg>
                       </span>

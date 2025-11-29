@@ -22,6 +22,11 @@ function OrderDetailModal({ order, onClose }: { order: any, onClose: () => void 
         <div className="mb-2"><span className="font-semibold">Quốc gia/Khu vực:</span> {order.country || "-"}</div>
         <div className="mb-2"><span className="font-semibold">Phương thức thanh toán:</span> {order.paymentMethod === "bank" ? "Chuyển khoản ngân hàng" : order.paymentMethod === "cash" ? "Thanh toán khi nhận hàng" : order.paymentMethod || "-"}</div>
         <div className="mb-2"><span className="font-semibold">Trạng thái:</span> {order.status}</div>
+        {order.status === "CANCELLED" && order.cancelReason && (
+          <div className="mb-2">
+            <span className="font-semibold text-red">Lý do hủy:</span> <span className="text-red-600">{order.cancelReason}</span>
+          </div>
+        )}
         <div className="mb-2"><span className="font-semibold">Tổng tiền:</span> {order.totalCents ? (order.totalCents/100).toLocaleString() : "0"}₫</div>
         <div className="mb-2"><span className="font-semibold">Ngày tạo:</span> {order.createdAt ? new Date(order.createdAt).toLocaleString() : "-"}</div>
         <div className="mb-2"><span className="font-semibold">Ghi chú:</span> {order.note || "-"}</div>
@@ -59,28 +64,28 @@ function OrderDetailModal({ order, onClose }: { order: any, onClose: () => void 
 const statusMap = {
   PENDING: {
     label: "Chờ xác nhận",
-    color: "bg-gray-100 text-gray-800",
-    icon: <FaCheckCircle className="inline mr-1 text-gray-500" />,
+    color: "bg-yellow-light text-black font-bold",
+    icon: <FaCheckCircle className="inline mr-1 text-yellow-dark" />,
   },
   PROCESSING: {
     label: "Đang xử lý",
-    color: "bg-yellow-100 text-yellow-800",
-    icon: <FaCheckCircle className="inline mr-1 text-yellow-500" />,
+    color: "bg-blue-light text-white font-bold",
+    icon: <FaCheckCircle className="inline mr-1 text-blue-dark" />,
   },
   SHIPPED: {
     label: "Đang giao",
-    color: "bg-blue-100 text-blue-800",
-    icon: <FaTruck className="inline mr-1 text-blue-500" />,
+    color: "bg-purple-light text-black font-bold",
+    icon: <FaTruck className="inline mr-1 text-white" />,
   },
   COMPLETED: {
     label: "Đã hoàn thành",
-    color: "bg-green-100 text-green-800",
-    icon: <FaCheckCircle className="inline mr-1 text-green-500" />,
+    color: "bg-green-light text-black font-bold",
+    icon: <FaCheckCircle className="inline mr-1 text-green-dark" />,
   },
   CANCELLED: {
     label: "Đã hủy",
-    color: "bg-red-100 text-red-800",
-    icon: <FaTimesCircle className="inline mr-1 text-red-500" />,
+    color: "bg-red-light text-white font-bold",
+    icon: <FaTimesCircle className="inline mr-1 text-white" />,
   },
 };
 
@@ -92,6 +97,8 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [actionLoading, setActionLoading] = useState<string>("");
+  const [cancelModalOrder, setCancelModalOrder] = useState<any>(null);
+  const [cancelReason, setCancelReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
@@ -361,52 +368,16 @@ export default function AdminOrdersPage() {
                     <span>
                       <Tooltip content="Hủy đơn hàng" side="top">
                         <button
-                          className="px-2 py-1 text-xs rounded border shadow transition"
-                          style={{
-                            background: "#EF4444",
-                            color: "#fff",
-                            border: "1px solid #B91C1C",
-                            fontWeight: 600,
-                            boxShadow: "0 1px 4px #B91C1C22",
-                            fontSize: 13,
-                            lineHeight: "18px",
-                            zIndex: 1,
-                            position: "relative",
-                            outline: "none",
-                            cursor: "pointer",
-                            WebkitAppearance: "none",
-                            MozAppearance: "none",
-                            appearance: "none",
-                            backgroundClip: "padding-box",
-                            backgroundColor: "#EF4444 !important",
-                            colorScheme: "light",
-                            color: "#fff !important",
-                          }}
-                          disabled={actionLoading === order.id + "-cancel"}
-                          onClick={async () => {
-                            if (!window.confirm("Bạn có chắc chắn muốn hủy đơn hàng này?")) return;
-                            setActionLoading(order.id + "-cancel");
-                            console.log("[Hủy đơn hàng]", order.id);
-                            try {
-                              const res = await fetch(`/api/orders/${order.id}/status`, {
-                                method: "PUT",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ status: "CANCELLED" }),
-                              });
-                              const result = await res.json();
-                              console.log("[Kết quả hủy]", result);
-                              // Reload orders
-                              const params = new URLSearchParams();
-                              if (filter) params.append("status", filter);
-                              if (search) params.append("q", search);
-                              params.append("page", String(page));
-                              params.append("pageSize", String(pageSize));
-                              const resList = await fetch(`/api/orders?${params.toString()}`);
-                              const data = await resList.json();
-                              setOrders(data.orders || []);
-                            } finally {
-                              setActionLoading("");
-                            }
+                          className={`px-2 py-1 text-xs rounded border shadow transition bg-red text-white border-red-dark font-semibold disabled:opacity-50 disabled:cursor-not-allowed`}
+                          disabled={
+                            actionLoading === order.id + "-cancel" ||
+                            order.status === "SHIPPED" ||
+                            order.status === "COMPLETED" ||
+                            order.status === "CANCELLED"
+                          }
+                          onClick={() => {
+                            setCancelModalOrder(order);
+                            setCancelReason("");
                           }}
                         >
                           {actionLoading === order.id + "-cancel"
@@ -414,7 +385,101 @@ export default function AdminOrdersPage() {
                             : "Hủy"}
                         </button>
                       </Tooltip>
+                      {/* Modal nhập lý do hủy đơn hàng */}
+                      {cancelModalOrder && (
+                        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+                          <div className="bg-white rounded-lg shadow-lg p-6 min-w-[350px] max-w-[90vw] relative">
+                            <h2 className="text-lg font-bold mb-2">Nhập lý do hủy đơn hàng</h2>
+                            <div className="mb-2">Mã đơn: <span className="font-mono">{cancelModalOrder.id}</span></div>
+                            <textarea
+                              className="border rounded w-full p-2 mb-4"
+                              rows={3}
+                              placeholder="Nhập lý do hủy..."
+                              value={cancelReason}
+                              onChange={e => setCancelReason(e.target.value)}
+                            />
+                            <div className="flex gap-2 justify-end">
+                              <button
+                                className="px-3 py-1 rounded bg-gray-3 text-gray-7 font-semibold"
+                                onClick={() => setCancelModalOrder(null)}
+                              >Hủy bỏ</button>
+                              <button
+                                className="px-3 py-1 rounded bg-red text-white font-semibold disabled:opacity-50"
+                                disabled={!cancelReason || actionLoading === cancelModalOrder.id + "-cancel"}
+                                onClick={async () => {
+                                  setActionLoading(cancelModalOrder.id + "-cancel");
+                                  try {
+                                    await fetch(`/api/orders/${cancelModalOrder.id}/status`, {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ status: "CANCELLED", cancelReason }),
+                                    });
+                                    // Reload orders
+                                    const params = new URLSearchParams();
+                                    if (filter) params.append("status", filter);
+                                    if (search) params.append("q", search);
+                                    params.append("page", String(page));
+                                    params.append("pageSize", String(pageSize));
+                                    const resList = await fetch(`/api/orders?${params.toString()}`);
+                                    const data = await resList.json();
+                                    setOrders(data.orders || []);
+                                    setCancelModalOrder(null);
+                                  } finally {
+                                    setActionLoading("");
+                                  }
+                                }}
+                              >Xác nhận hủy</button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </span>
+                    {order.status === "CANCELLED" && (
+                      <span>
+                        <Tooltip content="Xóa đơn hàng" side="top">
+                          <button
+                            className="px-2 py-1 text-xs rounded border shadow transition"
+                            style={{
+                              background: "#6B7280",
+                              color: "#fff",
+                              border: "1px solid #374151",
+                              fontWeight: 600,
+                              boxShadow: "0 1px 4px #37415122",
+                              fontSize: 13,
+                              lineHeight: "18px",
+                              zIndex: 1,
+                              position: "relative",
+                              outline: "none",
+                              cursor: "pointer",
+                              WebkitAppearance: "none",
+                              MozAppearance: "none",
+                              appearance: "none",
+                              backgroundClip: "padding-box",
+                              backgroundColor: "#6B7280 !important",
+                              colorScheme: "light",
+                              color: "#fff",
+                              textShadow: "0 1px 2px #0002",
+                            }}
+                            disabled={actionLoading === order.id + "-delete"}
+                            onClick={async () => {
+                              if (!window.confirm("Bạn có chắc chắn muốn xóa đơn hàng này? Thao tác này không thể hoàn tác.")) return;
+                              setActionLoading(order.id + "-delete");
+                              try {
+                                await fetch(`/api/orders/${order.id}`, { method: "DELETE" });
+                                // Xóa đơn hàng khỏi danh sách hiện tại mà không cần reload toàn bộ
+                                setOrders(prev => prev.filter(o => o.id !== order.id));
+                              } finally {
+                                setActionLoading("");
+                              }
+                            }}
+                          >
+                            {actionLoading === order.id + "-delete"
+                              ? "Đang xóa..."
+                              : "Xóa"}
+                          </button>
+                        </Tooltip>
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))

@@ -4,14 +4,26 @@ import { prisma } from "@/lib/prisma";
 export async function PUT(req: Request, context: { params: { id: string } }) {
   try {
     const { id } = (await context).params;
-    const { status, reason } = await req.json();
+    const { status, reason, cancelReason } = await req.json();
     if (!id || !status) {
       return NextResponse.json({ error: "Thiếu thông tin" }, { status: 400 });
+    }
+    // Lấy đơn hàng hiện tại
+    const currentOrder = await prisma.order.findUnique({ where: { id } });
+    if (!currentOrder) {
+      return NextResponse.json({ error: "Không tìm thấy đơn hàng" }, { status: 404 });
+    }
+    // Chỉ cho phép hủy khi trạng thái là PENDING hoặc PROCESSING
+    if (status === "CANCELLED" && !["PENDING", "PROCESSING"].includes(currentOrder.status)) {
+      return NextResponse.json({ error: "Không thể hủy đơn hàng đang giao hoặc đã hoàn thành" }, { status: 400 });
     }
     // Cập nhật trạng thái đơn hàng
     const order = await prisma.order.update({
       where: { id },
-      data: { status },
+      data: {
+        status,
+        cancelReason: status === "CANCELLED" ? cancelReason ?? null : undefined,
+      },
       include: { user: true },
     });
 

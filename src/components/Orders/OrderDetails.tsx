@@ -69,6 +69,11 @@ const OrderDetails = ({ orderItem }: any) => {
       <div className="px-7.5 w-full">
         <p className="font-bold">Shipping Address:</p>{" "}
         <p>942 Aspen Road Encino, CA 91316</p>
+        {orderItem.status === "CANCELLED" && orderItem.cancelReason && (
+          <div className="mt-3">
+            <span className="font-semibold text-red-600">Lý do hủy đơn hàng:</span> <span className="text-red-500">{orderItem.cancelReason}</span>
+          </div>
+        )}
       </div>
     </>
   );

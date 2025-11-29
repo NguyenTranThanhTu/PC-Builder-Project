@@ -16,6 +16,7 @@ export async function GET(req: Request) {
       where: { userId },
       orderBy: { createdAt: "desc" },
       take: 50,
+      // Trả về cả thông báo đã đọc và chưa đọc, trạng thái read sẽ được frontend xử lý
     });
     return NextResponse.json({ notifications });
   } catch (err) {

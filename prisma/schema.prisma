@@ -224,6 +224,7 @@ model Order {
   paymentMethod String?
   note        String?
   status      OrderStatus  @default(PENDING)
+  cancelReason String? @db.Text
   totalCents  Int
   items         OrderItem[]
   notifications Notification[]
@@ -259,7 +260,7 @@ model Review {
   content   String
   approved  Boolean  @default(true)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    // ...existing code...
 
   @@index([productId])
   @@index([userId])

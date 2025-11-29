@@ -96,7 +96,7 @@ const NotificationBell = () => {
               notifications.map((n) => (
                 <li
                   key={n.id}
-                  className={`p-4 border-b last:border-b-0 flex items-start gap-2 transition-all duration-200 ${!n.read ? "bg-blue-50 shadow-sm" : "bg-gray-300 text-gray-500 opacity-80"}`}
+                  className={`p-4 border-b last:border-b-0 flex items-start gap-2 transition-all duration-200 ${!n.read ? "bg-blue-50 shadow-sm" : "bg-gray-3 text-gray-6"}`}
                 >
                   {!n.read && <span className="mt-2 w-2 h-2 rounded-full bg-red-500 inline-block animate-pulse shadow" />}
                   <div className="flex-1">
