@@ -1,18 +1,19 @@
 // Notification for order status changes
 model Notification {
-  id         String   @id @default(cuid())
-  userId     String
-  orderId    String
-  type       String   // confirmed, delivering, completed, canceled
-  message    String
-  read       Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  userId    String
+  orderId   String
+  type      String // confirmed, delivering, completed, canceled
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([orderId])
 }
+
 // Prisma schema for NextAuth + eCommerce (electronics components)
 // DB: PostgreSQL
 
@@ -21,8 +22,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
   // Use a privileged connection for Prisma's shadow DB during `prisma migrate dev` only.
   // This lets the app role stay least-privileged (no CREATEDB required).
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
@@ -49,11 +50,11 @@ enum Operator {
 
 // Order status for eCommerce flow
 enum OrderStatus {
-  PENDING     // Đang chờ
-  PROCESSING  // Đang xử lý
-  SHIPPED     // Đang giao
-  COMPLETED   // Đã hoàn thành
-  CANCELLED   // Huỷ
+  PENDING // Đang chờ
+  PROCESSING // Đang xử lý
+  SHIPPED // Đang giao
+  COMPLETED // Đã hoàn thành
+  CANCELLED // Huỷ
 }
 
 // Product lifecycle status for soft-delete & publishing workflow
@@ -63,21 +64,31 @@ enum ProductStatus {
   ARCHIVED
 }
 
+// Coupon discount types
+enum DiscountType {
+  PERCENTAGE // Giảm theo phần trăm (%)
+  FIXED_AMOUNT // Giảm số tiền cố định (VND)
+}
+
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  hashedPassword String?  // For credentials provider
-  role          Role      @default(USER)
-  accounts      Account[]
-  sessions      Session[]
-  orders        Order[]
-  reviews       Review[]
-  notifications Notification[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id             String         @id @default(cuid())
+  name           String?
+  email          String?        @unique
+  emailVerified  DateTime?
+  image          String?
+  hashedPassword String? // For credentials provider
+  role           Role           @default(USER)
+  // VIP Tier System
+  vipTier        Int            @default(0) // 0=Normal, 1=VIP1, 2=VIP2, 3=VIP3
+  totalSpent     Int            @default(0) // Tổng tiền đã mua (cents)
+  lastTierUpdate DateTime?      @default(now())
+  accounts       Account[]
+  sessions       Session[]
+  orders         Order[]
+  reviews        Review[]
+  notifications  Notification[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 }
 
 model Account {
@@ -117,35 +128,35 @@ model VerificationToken {
 }
 
 model Category {
-  id        String    @id @default(cuid())
-  slug      String    @unique
-  name      String
-  products  Product[]
+  id         String              @id @default(cuid())
+  slug       String              @unique
+  name       String
+  products   Product[]
   leftRules  CompatibilityRule[] @relation("LeftCategory")
   rightRules CompatibilityRule[] @relation("RightCategory")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
 }
 
 model Product {
-  id        String   @id @default(uuid())
-  name      String
-  slug      String   @unique
-  description  String?
-  priceCents   Int                // store as cents to avoid float errors
-  stock        Int                @default(0)
-  imageUrl     String?
+  id            String             @id @default(uuid())
+  name          String
+  slug          String             @unique
+  description   String?
+  priceCents    Int // store as cents to avoid float errors
+  stock         Int                @default(0)
+  imageUrl      String?
   imageBlurData String?
-  featured     Boolean            @default(false)
-  status       ProductStatus      @default(DRAFT)
-  archivedAt   DateTime?
-  categoryId   String
-  category     Category           @relation(fields: [categoryId], references: [id])
-  attributes   ProductAttribute[]
-  orderItems   OrderItem[]
-  reviews      Review[]
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
+  featured      Boolean            @default(false)
+  status        ProductStatus      @default(DRAFT)
+  archivedAt    DateTime?
+  categoryId    String
+  category      Category           @relation(fields: [categoryId], references: [id])
+  attributes    ProductAttribute[]
+  orderItems    OrderItem[]
+  reviews       Review[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 
   @@index([categoryId])
   @@index([status])
@@ -155,23 +166,23 @@ model Product {
 }
 
 model AttributeType {
-  id        String    @id @default(cuid())
-  key       String    @unique   // e.g., CPU_SOCKET, RAM_TYPE, GPU_LENGTH_MM, CASE_GPU_CLEARANCE_MM, PSU_WATTAGE
-  label     String
-  valueType ValueType
+  id                String              @id @default(cuid())
+  key               String              @unique // e.g., CPU_SOCKET, RAM_TYPE, GPU_LENGTH_MM, CASE_GPU_CLEARANCE_MM, PSU_WATTAGE
+  label             String
+  valueType         ValueType
   productAttributes ProductAttribute[]
   leftRules         CompatibilityRule[] @relation("LeftAttrType")
   rightRules        CompatibilityRule[] @relation("RightAttrType")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 }
 
 model ProductAttribute {
-  id               String         @id @default(cuid())
-  productId        String
-  attributeTypeId  String
-  stringValue      String?
-  numberValue      Float?
+  id              String  @id @default(cuid())
+  productId       String
+  attributeTypeId String
+  stringValue     String?
+  numberValue     Float?
 
   product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   attributeType AttributeType @relation(fields: [attributeTypeId], references: [id])
@@ -184,7 +195,7 @@ model ProductAttribute {
 
 // Generic compatibility rule (attribute vs attribute or vs literal value)
 model CompatibilityRule {
-  id                   String        @id @default(cuid())
+  id                   String   @id @default(cuid())
   // Optional scoping by categories (e.g., CPU vs MOTHERBOARD)
   leftCategoryId       String?
   rightCategoryId      String?
@@ -196,10 +207,10 @@ model CompatibilityRule {
   compareNumber        Float?
   note                 String?
 
-  leftCategory   Category?     @relation("LeftCategory", fields: [leftCategoryId], references: [id])
-  rightCategory  Category?     @relation("RightCategory", fields: [rightCategoryId], references: [id])
-  leftAttrType   AttributeType @relation("LeftAttrType", fields: [leftAttributeTypeId], references: [id])
-  rightAttrType  AttributeType?@relation("RightAttrType", fields: [rightAttributeTypeId], references: [id])
+  leftCategory  Category?      @relation("LeftCategory", fields: [leftCategoryId], references: [id])
+  rightCategory Category?      @relation("RightCategory", fields: [rightCategoryId], references: [id])
+  leftAttrType  AttributeType  @relation("LeftAttrType", fields: [leftAttributeTypeId], references: [id])
+  rightAttrType AttributeType? @relation("RightAttrType", fields: [rightAttributeTypeId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -212,36 +223,43 @@ model CompatibilityRule {
 
 // Orders and Reviews for storefront transactions and feedback
 model Order {
-  id          String       @id @default(cuid())
-  userId      String?
-  user        User?        @relation(fields: [userId], references: [id])
-  customerName String
-  customerEmail String?
-  customerPhone String?
+  id              String         @id @default(cuid())
+  userId          String?
+  user            User?          @relation(fields: [userId], references: [id])
+  customerName    String
+  customerEmail   String?
+  customerPhone   String?
   shippingAddress String?
-  city         String?
-  country      String?
-  paymentMethod String?
-  note        String?
-  status      OrderStatus  @default(PENDING)
-  cancelReason String? @db.Text
-  totalCents  Int
-  items         OrderItem[]
-  notifications Notification[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  city            String?
+  country         String?
+  paymentMethod   String?
+  note            String?
+  status          OrderStatus    @default(PENDING)
+  cancelReason    String?        @db.Text
+  // Pricing breakdown
+  subtotalCents   Int            @default(0) // Tổng trước giảm giá (will backfill from totalCents)
+  couponCode      String? // Mã coupon đã dùng
+  couponDiscount  Int            @default(0) // Số tiền giảm từ coupon (cents)
+  vipDiscount     Int            @default(0) // Số tiền giảm từ VIP (cents)
+  totalCents      Int // Tổng sau tất cả giảm giá
+  items           OrderItem[]
+  notifications   Notification[]
+  orderCoupons    OrderCoupon[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+  @@index([couponCode])
 }
 
 model OrderItem {
-  id         String   @id @default(cuid())
+  id         String @id @default(cuid())
   orderId    String
   productId  String
-  quantity   Int      @default(1)
-  priceCents Int      // snapshot unit price at time of order
+  quantity   Int    @default(1)
+  priceCents Int // snapshot unit price at time of order
 
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
@@ -256,13 +274,66 @@ model Review {
   user      User?    @relation(fields: [userId], references: [id])
   productId String
   product   Product  @relation(fields: [productId], references: [id])
-  rating    Int      // 1..5
+  rating    Int // 1..5
   content   String
   approved  Boolean  @default(true)
   createdAt DateTime @default(now())
-    // ...existing code...
+  // ...existing code...
 
   @@index([productId])
   @@index([userId])
   @@index([createdAt])
+}
+
+// Coupon/Promo Code System
+model Coupon {
+  id            String        @id @default(cuid())
+  code          String        @unique // Mã coupon: "SALE50", "NEWUSER"
+  description   String? // Mô tả coupon
+  discountType  DiscountType // PERCENTAGE | FIXED_AMOUNT
+  discountValue Int // 10 (10%) hoặc 50000 (50k cents)
+  minOrderValue Int           @default(0) // Đơn tối thiểu (cents)
+  maxDiscount   Int? // Giảm tối đa (cents), null = unlimited
+  maxUsage      Int? // Số lần dùng tối đa, null = unlimited
+  usageCount    Int           @default(0) // Đã dùng bao nhiêu lần
+  startDate     DateTime // Bắt đầu hiệu lực
+  endDate       DateTime // Hết hạn
+  isActive      Boolean       @default(true) // Admin có thể bật/tắt
+  forVIPOnly    Boolean       @default(false) // Chỉ VIP mới dùng được
+  minVIPTier    Int? // VIP tier tối thiểu (1,2,3)
+  orderCoupons  OrderCoupon[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+  @@index([startDate, endDate])
+}
+
+// Junction table: Order <-> Coupon (nhiều order có thể dùng cùng 1 coupon)
+model OrderCoupon {
+  id             String   @id @default(cuid())
+  orderId        String
+  couponId       String
+  discountAmount Int // Số tiền đã giảm (cents)
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  coupon         Coupon   @relation(fields: [couponId], references: [id])
+  createdAt      DateTime @default(now())
+
+  @@index([orderId])
+  @@index([couponId])
+}
+
+// VIP Tier Configuration
+model VIPTierConfig {
+  id              String   @id @default(cuid())
+  tier            Int      @unique // 1, 2, 3
+  name            String // "VIP Đồng", "VIP Bạc", "VIP Vàng"
+  minSpend        Int // Mua tối thiểu để lên tier (cents)
+  discountPercent Int // Discount % (3, 4, 5)
+  badgeColor      String // Màu badge: "#CD7F32", "#C0C0C0", "#FFD700"
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([minSpend])
 }

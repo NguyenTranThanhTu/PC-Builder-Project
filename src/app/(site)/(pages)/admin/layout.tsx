@@ -1,8 +1,8 @@
 import { getServerSession } from "next-auth";
 import { authOptions, isAdmin } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import AdminNav from "@/components/Admin/AdminNav";
-import AdminSidebar from "@/components/Admin/AdminSidebar";
+import ModernAdminSidebar from "@/components/Admin/ModernAdminSidebar";
+import ModernAdminNavbar from "@/components/Admin/ModernAdminNavbar";
 import React from "react";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -12,31 +12,45 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!allowed) {
     return (
-      <section className="overflow-hidden py-20 bg-gray-2">
-        <div className="max-w-[1170px] w-full mx-auto px-4 sm:px-8 xl:px-0">
-          <div className="bg-white rounded-xl shadow-1 p-8">
-            <h1 className="text-2xl font-semibold text-dark mb-2">Access Denied</h1>
-            <p className="text-custom-sm text-dark-2">Tài khoản của bạn không có quyền truy cập admin.</p>
+      <div className="min-h-screen bg-gradient-to-br from-red-light-6 to-orange-light-4 flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-2 p-8 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-light-6 flex items-center justify-center">
+            <svg className="w-8 h-8 text-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
           </div>
+          <h1 className="text-2xl font-bold text-dark mb-2">Truy cập bị từ chối</h1>
+          <p className="text-sm text-dark-5 mb-6">
+            Tài khoản của bạn không có quyền truy cập vào khu vực quản trị. Vui lòng liên hệ quản trị viên.
+          </p>
+          <a
+            href="/"
+            className="inline-flex items-center justify-center px-6 py-3 bg-blue text-white rounded-lg font-medium hover:bg-blue-dark transition-colors"
+          >
+            Về trang chủ
+          </a>
         </div>
-      </section>
+      </div>
     );
   }
 
   return (
-    <section className="overflow-hidden py-6 bg-gray-2 min-h-screen">
-      <div className="w-full mx-auto px-4 sm:px-6 xl:px-8">
-        {/* Mobile top nav */}
-        <div className="md:hidden bg-white rounded-xl shadow-1 p-3 mb-4">
-          <AdminNav />
-        </div>
-        <div className="hidden md:grid md:grid-cols-[240px_1fr] gap-6">
-          <AdminSidebar />
-          <div>{children}</div>
-        </div>
-        {/* Fallback for small screens displays children under top nav */}
-        <div className="md:hidden">{children}</div>
+    <div className="min-h-screen bg-gray-1">
+      {/* Sidebar */}
+      <ModernAdminSidebar />
+
+      {/* Main Content Area */}
+      <div className="lg:ml-72 transition-all duration-300">
+        {/* Navbar */}
+        <ModernAdminNavbar />
+
+        {/* Page Content */}
+        <main className="p-6">
+          <div className="max-w-[1600px] mx-auto">
+            {children}
+          </div>
+        </main>
       </div>
-    </section>
+    </div>
   );
 }

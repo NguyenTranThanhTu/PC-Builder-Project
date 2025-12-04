@@ -7,6 +7,7 @@ const NAV = [
   { href: "/admin/products", label: "Sản phẩm" },
   { href: "/admin/categories", label: "Danh mục" },
   { href: "/admin/orders", label: "Đơn hàng" },
+  { href: "/admin/users", label: "Users" },
   { href: "/admin/reviews", label: "Đánh giá" },
   { href: "/admin/banner", label: "Banner/Trang chủ" },
   { href: "/admin/media", label: "Media" },

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkAndUpgradeVIPTier } from "@/lib/vipTier";
 
 // GET /api/orders: List orders with pagination and filtering
 export async function GET(req: Request) {
@@ -76,6 +77,7 @@ export async function POST(req: Request) {
       country,
       paymentMethod,
       note,
+      couponCode,
     }: {
       items: OrderItemInput[];
       customerName: string;
@@ -86,6 +88,7 @@ export async function POST(req: Request) {
       country?: string;
       paymentMethod?: string;
       note?: string;
+      couponCode?: string;
     } = body;
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -122,16 +125,87 @@ export async function POST(req: Request) {
       }
     }
 
-    const totalCents = sanitized.reduce((sum, it) => sum + (priceMap.get(it.productId) ?? 0) * it.quantity, 0);
-    if (totalCents <= 0) {
+    const subtotalCents = sanitized.reduce((sum, it) => sum + (priceMap.get(it.productId) ?? 0) * it.quantity, 0);
+    if (subtotalCents <= 0) {
       return NextResponse.json({ error: "Tổng tiền không hợp lệ" }, { status: 400 });
     }
 
+    // Get user info for VIP discount calculation
     let userId: string | undefined = undefined;
+    let userVipTier = 0;
+    let vipDiscountPercent = 0;
     if (session?.user?.email) {
       const u = await prisma.user.findUnique({ where: { email: session.user.email } });
-      userId = u?.id;
+      if (u) {
+        userId = u.id;
+        userVipTier = u.vipTier;
+        
+        // Get VIP discount percent
+        if (userVipTier > 0) {
+          const vipConfig = await prisma.vIPTierConfig.findUnique({ where: { tier: userVipTier } });
+          if (vipConfig) {
+            vipDiscountPercent = vipConfig.discountPercent;
+          }
+        }
+      }
     }
+
+    // Calculate VIP discount (applied to subtotal)
+    const vipDiscountCents = Math.round((subtotalCents * vipDiscountPercent) / 100);
+
+    // Validate and calculate coupon discount
+    let couponDiscountCents = 0;
+    let validCoupon = null;
+    if (couponCode) {
+      const coupon = await prisma.coupon.findUnique({ where: { code: couponCode.toUpperCase() } });
+      if (!coupon || !coupon.isActive) {
+        return NextResponse.json({ error: "Mã khuyến mãi không hợp lệ" }, { status: 400 });
+      }
+
+      const now = new Date();
+      if (coupon.startDate > now || coupon.endDate < now) {
+        return NextResponse.json({ error: "Mã khuyến mãi đã hết hạn hoặc chưa có hiệu lực" }, { status: 400 });
+      }
+
+      if (coupon.maxUsage && coupon.usageCount >= coupon.maxUsage) {
+        return NextResponse.json({ error: "Mã khuyến mãi đã hết lượt sử dụng" }, { status: 400 });
+      }
+
+      if (coupon.forVIPOnly && userVipTier === 0) {
+        return NextResponse.json({ error: "Mã khuyến mãi chỉ dành cho khách hàng VIP" }, { status: 400 });
+      }
+
+      if (coupon.minVIPTier && userVipTier < coupon.minVIPTier) {
+        return NextResponse.json({ error: `Mã khuyến mãi yêu cầu VIP cấp ${coupon.minVIPTier} trở lên` }, { status: 400 });
+      }
+
+      if (subtotalCents < coupon.minOrderValue) {
+        const minVND = (coupon.minOrderValue / 100).toLocaleString("vi-VN");
+        return NextResponse.json({ error: `Đơn hàng tối thiểu ${minVND}₫ để sử dụng mã này` }, { status: 400 });
+      }
+
+      // Calculate coupon discount (applied AFTER VIP discount)
+      const amountAfterVIP = subtotalCents - vipDiscountCents;
+      if (coupon.discountType === "PERCENTAGE") {
+        couponDiscountCents = Math.round((amountAfterVIP * coupon.discountValue) / 100);
+      } else {
+        couponDiscountCents = coupon.discountValue;
+      }
+
+      // Apply max discount cap
+      if (coupon.maxDiscount && couponDiscountCents > coupon.maxDiscount) {
+        couponDiscountCents = coupon.maxDiscount;
+      }
+
+      // Cannot exceed remaining amount
+      if (couponDiscountCents > amountAfterVIP) {
+        couponDiscountCents = amountAfterVIP;
+      }
+
+      validCoupon = coupon;
+    }
+
+    const totalCents = subtotalCents - vipDiscountCents - couponDiscountCents;
 
     let result;
     try {
@@ -148,6 +222,10 @@ export async function POST(req: Request) {
             paymentMethod,
             note,
             status: "PENDING",
+            subtotalCents,
+            couponCode: validCoupon?.code,
+            couponDiscount: couponDiscountCents,
+            vipDiscount: vipDiscountCents,
             totalCents,
             items: {
               create: sanitized.map((it) => ({
@@ -159,6 +237,32 @@ export async function POST(req: Request) {
           },
           include: { items: true },
         });
+
+        // Create OrderCoupon record if coupon was used
+        if (validCoupon) {
+          await tx.orderCoupon.create({
+            data: {
+              orderId: order.id,
+              couponId: validCoupon.id,
+              discountAmount: couponDiscountCents,
+            },
+          });
+
+          // Increment coupon usage count
+          await tx.coupon.update({
+            where: { id: validCoupon.id },
+            data: { usageCount: { increment: 1 } },
+          });
+        }
+
+        // Update user totalSpent for VIP tier calculation
+        if (userId) {
+          await tx.user.update({
+            where: { id: userId },
+            data: { totalSpent: { increment: totalCents } },
+          });
+        }
+
         // Decrement stock for each item
         for (const it of sanitized) {
           await tx.product.update({
@@ -173,12 +277,18 @@ export async function POST(req: Request) {
       throw err;
     }
 
+    // Check if user qualifies for VIP upgrade
+    let vipUpgrade = null;
+    if (userId) {
+      vipUpgrade = await checkAndUpgradeVIPTier(userId);
+    }
+
     // Lấy lại order vừa tạo, include user
     const order = await prisma.order.findUnique({
       where: { id: result.id },
       include: { user: true, items: true },
     });
-    return NextResponse.json({ order }, { status: 201 });
+    return NextResponse.json({ order, vipUpgrade }, { status: 201 });
   } catch (err) {
     console.error("Create order error", err);
     return NextResponse.json({ error: "Tạo đơn hàng thất bại" }, { status: 500 });

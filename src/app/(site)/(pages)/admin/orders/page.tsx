@@ -27,7 +27,18 @@ function OrderDetailModal({ order, onClose }: { order: any, onClose: () => void 
             <span className="font-semibold text-red">Lý do hủy:</span> <span className="text-red-600">{order.cancelReason}</span>
           </div>
         )}
-        <div className="mb-2"><span className="font-semibold">Tổng tiền:</span> {order.totalCents ? (order.totalCents/100).toLocaleString() : "0"}₫</div>
+        {order.subtotalCents > 0 && <div className="mb-2"><span className="font-semibold">Tạm tính:</span> {(order.subtotalCents/100).toLocaleString()}₫</div>}
+        {order.couponCode && order.couponDiscount > 0 && (
+          <div className="mb-2 text-green">
+            <span className="font-semibold">Mã giảm giá ({order.couponCode}):</span> <span className="font-bold">-{(order.couponDiscount/100).toLocaleString()}₫</span>
+          </div>
+        )}
+        {order.vipDiscount > 0 && (
+          <div className="mb-2 text-blue">
+            <span className="font-semibold">Giảm giá VIP:</span> <span className="font-bold">-{(order.vipDiscount/100).toLocaleString()}₫</span>
+          </div>
+        )}
+        <div className="mb-2"><span className="font-semibold">Tổng cộng:</span> <span className="text-blue font-bold text-lg">{order.totalCents ? (order.totalCents/100).toLocaleString() : "0"}₫</span></div>
         <div className="mb-2"><span className="font-semibold">Ngày tạo:</span> {order.createdAt ? new Date(order.createdAt).toLocaleString() : "-"}</div>
         <div className="mb-2"><span className="font-semibold">Ghi chú:</span> {order.note || "-"}</div>
         <div className="mt-4">

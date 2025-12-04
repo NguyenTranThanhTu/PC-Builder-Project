@@ -96,37 +96,108 @@ export default async function AdminPage() {
   }));
 
   return (
-    <section className="overflow-hidden py-10 bg-gray-2">
-      <div className="max-w-[1170px] w-full mx-auto px-4 sm:px-8 xl:px-0">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-dark">Trang tổng quan</h1>
-          <p className="text-custom-sm text-dark-2">Xin chào {session.user?.name || session.user?.email}</p>
+    <div className="space-y-6">
+      {/* Welcome Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-dark mb-2">Dashboard</h1>
+          <p className="text-sm text-dark-5">
+            Xin chào, <span className="font-semibold text-dark">{session.user?.name || session.user?.email}</span> 👋
+          </p>
         </div>
-
-        {/* Chart */}
-        <div className="bg-white rounded-xl shadow-1 p-6 mb-6">
-          <BarChart
-            title="Biểu đồ doanh thu"
-            data={[
-              { label: "Doanh thu ngày", value: revenueDay, color: "#6366F1" },
-              { label: "Doanh thu tháng", value: revenueMonth, color: "#8B5CF6" },
-              { label: "Doanh thu năm", value: revenueYear, color: "#22C55E" },
-            ]}
-            height={320}
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 text-sm text-gray-600">
-            <div><span className="text-gray-500">Doanh thu ngày:</span> <span className="font-medium text-dark">{formatVnd(revenueDay)}</span></div>
-            <div><span className="text-gray-500">Doanh thu tháng:</span> <span className="font-medium text-dark">{formatVnd(revenueMonth)}</span></div>
-            <div><span className="text-gray-500">Doanh thu năm:</span> <span className="font-medium text-dark">{formatVnd(revenueYear)}</span></div>
-          </div>
-        </div>
-
-        {/* Tables */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <RecentOrders data={ordersData as any} />
-          <RecentReviews data={reviewsData as any} />
+        <div className="flex items-center gap-2 text-sm text-dark-5">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          {new Date().toLocaleDateString("vi-VN", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
         </div>
       </div>
-    </section>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Revenue Day */}
+        <div className="bg-gradient-to-br from-blue to-blue-dark rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
+          <div className="flex items-start justify-between mb-4">
+            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <span className="px-2.5 py-1 bg-white/20 rounded-lg text-xs font-semibold">Hôm nay</span>
+          </div>
+          <h3 className="text-2xl font-bold mb-1">{formatVnd(revenueDay)}</h3>
+          <p className="text-blue-light-3 text-sm">Doanh thu trong ngày</p>
+        </div>
+
+        {/* Revenue Month */}
+        <div className="bg-gradient-to-br from-purple to-purple-dark rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
+          <div className="flex items-start justify-between mb-4">
+            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <span className="px-2.5 py-1 bg-white/20 rounded-lg text-xs font-semibold">Tháng này</span>
+          </div>
+          <h3 className="text-2xl font-bold mb-1">{formatVnd(revenueMonth)}</h3>
+          <p className="text-purple-light-2 text-sm">Doanh thu trong tháng</p>
+        </div>
+
+        {/* Revenue Year */}
+        <div className="bg-gradient-to-br from-green to-green-dark rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
+          <div className="flex items-start justify-between mb-4">
+            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </div>
+            <span className="px-2.5 py-1 bg-white/20 rounded-lg text-xs font-semibold">Năm nay</span>
+          </div>
+          <h3 className="text-2xl font-bold mb-1">{formatVnd(revenueYear)}</h3>
+          <p className="text-green-light-3 text-sm">Tổng doanh thu năm</p>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-3 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-lg font-bold text-dark">Biểu đồ doanh thu</h2>
+            <p className="text-sm text-dark-5">So sánh doanh thu theo thời gian</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="px-3 py-1.5 text-xs font-medium bg-gray-1 text-dark rounded-lg hover:bg-gray-2 transition-colors">
+              Tuần
+            </button>
+            <button className="px-3 py-1.5 text-xs font-medium bg-blue text-white rounded-lg">
+              Tháng
+            </button>
+            <button className="px-3 py-1.5 text-xs font-medium bg-gray-1 text-dark rounded-lg hover:bg-gray-2 transition-colors">
+              Năm
+            </button>
+          </div>
+        </div>
+        <BarChart
+          title=""
+          data={[
+            { label: "Hôm nay", value: revenueDay, color: "#3C50E0" },
+            { label: "Tháng này", value: revenueMonth, color: "#8B5CF6" },
+            { label: "Năm nay", value: revenueYear, color: "#22AD5C" },
+          ]}
+          height={280}
+        />
+      </div>
+
+      {/* Recent Activity Tables */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <RecentOrders data={ordersData as any} />
+        <RecentReviews data={reviewsData as any} />
+      </div>
+    </div>
   );
 }

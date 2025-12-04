@@ -25,6 +25,11 @@ const NAV = [
       <circle cx="18" cy="20" r="1" fill="currentColor"/>
     </svg>
   )},
+  { href: "/admin/users", label: "Users", icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="shrink-0">
+      <path d="M12 12c2.7 0 4.5-1.8 4.5-4.5S14.7 3 12 3 7.5 4.8 7.5 7.5 9.3 12 12 12zm0 2c-3 0-9 1.5-9 4.5V21h18v-2.5c0-3-6-4.5-9-4.5z" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    </svg>
+  )},
   { href: "/admin/reviews", label: "Đánh giá", icon: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="shrink-0">
       <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27z" stroke="currentColor" strokeWidth="1.5" fill="none"/>

@@ -7,6 +7,7 @@ import ShippingMethod from "./ShippingMethod";
 import PaymentMethod from "./PaymentMethod";
 import Coupon from "./Coupon";
 import Billing from "./Billing";
+import CouponSelectorModal from "./CouponSelectorModal";
 import { useAppSelector } from "@/redux/store";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/redux/store";
@@ -19,9 +20,53 @@ const Checkout = () => {
   const cartItems = useAppSelector((s) => s.cartReducer.items);
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
-
   const { status } = useSession();
+  
   const [paymentMethod, setPaymentMethod] = React.useState<string>("cash");
+  const [selectedCoupon, setSelectedCoupon] = React.useState<string>("");
+  const [couponDiscount, setCouponDiscount] = React.useState<number>(0);
+  const [isCouponModalOpen, setIsCouponModalOpen] = React.useState(false);
+  const [selectedBank, setSelectedBank] = React.useState<string>("");
+  const [isProcessing, setIsProcessing] = React.useState(false);
+
+  // Calculate totals
+  const items = cartItems;
+  const merchandise = items.reduce((sum, it: any) => sum + (it.discountedPrice || it.price) * it.quantity, 0);
+  const shippingFee = items.length ? 15000 : 0;
+  const subtotal = merchandise + shippingFee;
+  const total = subtotal - couponDiscount;
+
+  // Validate coupon function
+  const validateCoupon = React.useCallback(async (code: string) => {
+    try {
+      const merchandiseInCents = merchandise * 100;
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ couponCode: code, orderTotal: merchandiseInCents }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setCouponDiscount(data.discountAmount / 100);
+      } else {
+        setCouponDiscount(0);
+        setSelectedCoupon("");
+      }
+    } catch (error) {
+      console.error("Coupon validation failed:", error);
+      setCouponDiscount(0);
+    }
+  }, [merchandise]);
+
+  // Validate coupon when selected
+  React.useEffect(() => {
+    if (selectedCoupon) {
+      validateCoupon(selectedCoupon);
+    } else {
+      setCouponDiscount(0);
+    }
+  }, [selectedCoupon, validateCoupon]);
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (status !== "authenticated") {
@@ -75,7 +120,8 @@ const Checkout = () => {
     // Calculate total (same as UI)
     const merchandise = itemsWithDetails.reduce((sum, it) => sum + (it.discountedPrice || it.price) * it.quantity, 0);
     const shippingFee = itemsWithDetails.length ? 15000 : 0;
-    const total = merchandise + shippingFee;
+    const subtotal = merchandise + shippingFee;
+    const total = subtotal - couponDiscount;
     const payload = {
       customerName,
       customerEmail: email || undefined,
@@ -86,11 +132,15 @@ const Checkout = () => {
       city,
       paymentMethod,
       items: itemsWithDetails,
+      subtotal,
       total,
+      couponCode: selectedCoupon || undefined,
+      couponDiscount,
       ...userInfo,
     };
 
     try {
+      setIsProcessing(true);
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -99,33 +149,65 @@ const Checkout = () => {
       const data = await res.json();
       if (!res.ok) {
         alert(data?.error || "Đặt hàng thất bại");
+        setIsProcessing(false);
         return;
       }
+
+      const orderId = data.orderId;
+
       // Lưu thông tin đơn hàng vào localStorage để hiển thị ở trang xác nhận
       if (typeof window !== "undefined") {
         window.localStorage.setItem("lastOrderInfo", JSON.stringify(payload));
         console.log("[Checkout] Saved lastOrderInfo:", payload);
       }
+
+      // If VNPay payment selected, redirect to payment gateway
+      if (paymentMethod === "vnpay") {
+        try {
+          const vnpayRes = await fetch("/api/vnpay/create-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              orderId,
+              bankCode: selectedBank || undefined 
+            }),
+          });
+          const vnpayData = await vnpayRes.json();
+          
+          if (!vnpayRes.ok) {
+            alert(vnpayData?.error || "Không thể tạo link thanh toán VNPay");
+            setIsProcessing(false);
+            return;
+          }
+
+          // Clear cart and redirect to VNPay
+          dispatch(removeAllItemsFromCart());
+          window.location.href = vnpayData.paymentUrl;
+          return;
+        } catch (err) {
+          console.error("VNPay payment error:", err);
+          alert("Lỗi khi tạo thanh toán VNPay");
+          setIsProcessing(false);
+          return;
+        }
+      }
+
+      // For other payment methods (cash, bank_transfer)
       dispatch(removeAllItemsFromCart());
       router.push("/mail-success");
     } catch (err) {
+      setIsProcessing(false);
       console.error(err);
       alert("Có lỗi khi kết nối máy chủ");
     }
   }
 
-  // derive totals from cart
-  const items = cartItems;
-  const merchandise = items.reduce((sum, it: any) => sum + (it.discountedPrice || it.price) * it.quantity, 0);
-  const shippingFee = items.length ? 15000 : 0; // 15,000 VND
-  const total = merchandise + shippingFee;
-
   return (
     <>
+    <section className="overflow-hidden py-20 bg-gray-2">
       <Breadcrumb title={"Checkout"} pages={["checkout"]} />
-      <section className="overflow-hidden py-20 bg-gray-2">
-        <div className="max-w-[1170px] w-full mx-auto px-4 sm:px-8 xl:px-0">
-          <form onSubmit={onSubmit}>
+      <div className="max-w-[1170px] w-full mx-auto px-4 sm:px-8 xl:px-0">
+        <form onSubmit={onSubmit}>
             <div className="flex flex-col lg:flex-row gap-7.5 xl:gap-11">
               {/* <!-- checkout left --> */}
               <div className="lg:max-w-[670px] w-full">
@@ -189,7 +271,6 @@ const Checkout = () => {
                         </div>
                       </div>
                     ))}
-
                     {/* <!-- shipping fee --> */}
                     {shippingFee > 0 && (
                       <div className="flex items-center justify-between py-5 border-b border-gray-3">
@@ -202,40 +283,99 @@ const Checkout = () => {
                       </div>
                     )}
 
+                    {/* <!-- coupon selector --> */}
+                    <div className="py-5 border-b border-gray-3">
+                      <button
+                        type="button"
+                        onClick={() => setIsCouponModalOpen(true)}
+                        className="w-full flex items-center justify-between py-3 px-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue transition-colors group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <svg className="w-6 h-6 text-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                          </svg>
+                          <div className="text-left">
+                            {selectedCoupon ? (
+                              <>
+                                <p className="font-mono font-bold text-blue">{selectedCoupon}</p>
+                                <p className="text-xs text-gray-600">-{formatVnd(couponDiscount)}</p>
+                              </>
+                            ) : (
+                              <>
+                                <p className="font-medium text-dark">Chọn mã giảm giá</p>
+                                <p className="text-xs text-gray-600">Nhấn để xem các mã có sẵn</p>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <svg className="w-5 h-5 text-gray-400 group-hover:text-blue transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* <!-- coupon discount --> */}
+                    {couponDiscount > 0 && (
+                      <div className="flex items-center justify-between py-5 border-b border-gray-3">
+                        <div>
+                          <p className="text-green font-medium">Giảm giá</p>
+                        </div>
+                        <div>
+                          <p className="text-green font-medium text-right">-{formatVnd(couponDiscount)}</p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* <!-- total --> */}
                     <div className="flex items-center justify-between pt-5">
                       <div>
-                        <p className="font-medium text-lg text-dark">Tổng cộng</p>
+                        <h4 className="font-semibold text-xl text-dark">Tổng cộng</h4>
                       </div>
                       <div>
-                        <p className="font-medium text-lg text-dark text-right">
+                        <h4 className="font-semibold text-xl text-dark text-right">
                           {formatVnd(total)}
-                        </p>
+                        </h4>
                       </div>
                     </div>
-                  </div>
                 </div>
+              </div>
 
-                {/* <!-- coupon box --> */}
-                <Coupon />
-
-                {/* ShippingMethod đã bị loại bỏ theo yêu cầu */}
-
-                {/* <!-- payment box --> */}
-                <PaymentMethod paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} />
+              {/* <!-- payment box --> */}
+              <PaymentMethod 
+                paymentMethod={paymentMethod} 
+                setPaymentMethod={setPaymentMethod}
+                selectedBank={selectedBank}
+                setSelectedBank={setSelectedBank}
+              />
 
                 {/* <!-- checkout button --> */}
                 <button
                   type="submit"
-                  className="w-full flex justify-center font-medium text-white bg-blue py-3 px-6 rounded-md ease-out duration-200 hover:bg-blue-dark mt-7.5"
+                  disabled={isProcessing}
+                  className={`w-full flex justify-center items-center gap-2 font-medium text-white bg-blue py-3 px-6 rounded-md ease-out duration-200 hover:bg-blue-dark mt-7.5 ${isProcessing ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
-                  Process to Checkout
+                  {isProcessing && (
+                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                    </svg>
+                  )}
+                  {isProcessing ? 'Đang xử lý...' : (paymentMethod === 'vnpay' ? 'Thanh toán VNPay' : 'Process to Checkout')}
                 </button>
-              </div>
             </div>
-          </form>
-        </div>
-      </section>
+          </div>
+        </form>
+      </div>
+
+      {/* Coupon Modal */}
+      <CouponSelectorModal
+        isOpen={isCouponModalOpen}
+        onClose={() => setIsCouponModalOpen(false)}
+        onSelectCoupon={setSelectedCoupon}
+        currentCoupon={selectedCoupon}
+        orderTotal={merchandise * 100}
+      />
+    </section>
     </>
   );
 };

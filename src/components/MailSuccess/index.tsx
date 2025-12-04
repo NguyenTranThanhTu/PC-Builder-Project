@@ -59,7 +59,13 @@ const MailSuccess = () => {
                     </ul>
                   </div>
                 )}
-                <div className="mb-2">Tổng tiền: <b>{orderInfo.total ? formatVnd(orderInfo.total) : '-'}</b></div>
+                {orderInfo.subtotal && <div className="mb-2">Tạm tính: <b>{formatVnd(orderInfo.subtotal)}</b></div>}
+                {orderInfo.couponCode && orderInfo.couponDiscount > 0 && (
+                  <div className="mb-2 text-green">
+                    Mã giảm giá ({orderInfo.couponCode}): <b>-{formatVnd(orderInfo.couponDiscount)}</b>
+                  </div>
+                )}
+                <div className="mb-2 text-lg">Tổng cộng: <b className="text-blue">{orderInfo.total ? formatVnd(orderInfo.total) : '-'}</b></div>
                 {orderInfo.paymentMethod === "bank" && (
                   <div className="mb-2">
                     <img src="/images/checkout/QR_thanhtoan.jpg" alt="Bank QR" className="max-w-[350px] w-full rounded" />

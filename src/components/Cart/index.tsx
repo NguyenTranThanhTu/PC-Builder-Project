@@ -1,6 +1,5 @@
 "use client";
 import React from "react";
-import Discount from "./Discount";
 import OrderSummary from "./OrderSummary";
 import { useAppSelector } from "@/redux/store";
 import SingleItem from "./SingleItem";
@@ -64,8 +63,7 @@ const Cart = () => {
               </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-7.5 xl:gap-11 mt-9">
-              <Discount />
+            <div className="flex justify-end mt-9">
               <OrderSummary />
             </div>
           </div>

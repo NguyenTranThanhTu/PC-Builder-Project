@@ -12,6 +12,7 @@ import { formatVnd } from "@/lib/formatVnd";
 import { useCartModalContext } from "@/app/context/CartSidebarModalContext";
 import Image from "next/image";
 import NotificationBell from "@/components/Notification/NotificationBell";
+import VIPBadge from "@/components/Common/VIPBadge";
 
 const Header = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -179,6 +180,8 @@ const Header = () => {
                       <span className="block text-2xs text-dark-4 uppercase">Xin chào</span>
                       <p className="font-medium text-custom-sm text-dark">{session.user.name || session.user.email}</p>
                     </div>
+                    {/* VIP Badge */}
+                    <VIPBadge />
                     {/* Icon bell notification */}
                     <NotificationBell />
                     {/* Nút đăng xuất */}
