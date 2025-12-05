@@ -57,9 +57,18 @@ export async function POST(req: NextRequest) {
     // Convert cents to VND
     const amountVND = Math.round(order.totalCents / 100);
 
-    // Create order description
-    const productNames = order.items.slice(0, 2).map(item => item.product.name).join(", ");
-    const orderInfo = `Thanh toan don hang ${order.id}. ${productNames}${order.items.length > 2 ? "..." : ""}`;
+    // Create order description (VNPay only accepts ASCII, no special characters)
+    // Remove Vietnamese characters and special chars
+    const sanitizeText = (text: string) => {
+      return text
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[đĐ]/g, "d")
+        .replace(/[^a-zA-Z0-9 ]/g, "")
+        .substring(0, 50);
+    };
+    
+    const orderInfo = `Thanh toan don hang ${order.id.substring(0, 8)}`;
 
     // Get client IP
     const forwarded = req.headers.get("x-forwarded-for");
@@ -79,9 +88,11 @@ export async function POST(req: NextRequest) {
     console.log("[VNPay] Creating payment for order:", {
       orderId: order.id,
       amount: amountVND,
+      amountCents: order.totalCents,
       ipAddr,
       bankCode,
     });
+    console.log("[VNPay] Payment URL:", paymentUrl);
 
     return NextResponse.json({
       paymentUrl,

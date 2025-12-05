@@ -153,7 +153,13 @@ const Checkout = () => {
         return;
       }
 
-      const orderId = data.orderId;
+      const orderId = data.order?.id;
+      
+      if (!orderId) {
+        alert("Lỗi: Không nhận được mã đơn hàng");
+        setIsProcessing(false);
+        return;
+      }
 
       // Lưu thông tin đơn hàng vào localStorage để hiển thị ở trang xác nhận
       if (typeof window !== "undefined") {

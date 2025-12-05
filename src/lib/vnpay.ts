@@ -16,19 +16,14 @@ export const VNPAY_CONFIG = {
 
 /**
  * Sort object by key (VNPay requirement)
+ * DO NOT encode here - will be encoded by querystring.stringify
  */
 export function sortObject(obj: any): any {
   const sorted: any = {};
-  const str = [];
-  let key;
-  for (key in obj) {
-    if (obj.hasOwnProperty(key)) {
-      str.push(encodeURIComponent(key));
-    }
-  }
-  str.sort();
-  for (key = 0; key < str.length; key++) {
-    sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
+  const str = Object.keys(obj).sort();
+  
+  for (const key of str) {
+    sorted[key] = obj[key];
   }
   return sorted;
 }
@@ -59,11 +54,16 @@ export function createPaymentUrl(params: {
 }): string {
   const { orderId, amount, orderInfo, ipAddr, bankCode, locale = "vn" } = params;
 
-  const createDate = new Date().toISOString().replace(/[-T:\.Z]/g, "").slice(0, 14);
-  const expireDate = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
-    .toISOString()
-    .replace(/[-T:\.Z]/g, "")
-    .slice(0, 14);
+  // VNPay requires Vietnam timezone (UTC+7)
+  const now = new Date();
+  const vnTime = new Date(now.getTime() + (7 * 60 * 60 * 1000)); // Add 7 hours for UTC+7
+  const expireTime = new Date(vnTime.getTime() + (15 * 60 * 1000)); // +15 minutes
+  
+  const createDate = vnTime.toISOString().replace(/[-T:\.Z]/g, "").slice(0, 14);
+  const expireDate = expireTime.toISOString().replace(/[-T:\.Z]/g, "").slice(0, 14);
+
+  // VNPay requires amount as integer (no decimals)
+  const vnpAmount = Math.round(amount * 100);
 
   let vnp_Params: any = {
     vnp_Version: "2.1.0",
@@ -74,7 +74,7 @@ export function createPaymentUrl(params: {
     vnp_TxnRef: orderId,
     vnp_OrderInfo: orderInfo,
     vnp_OrderType: "other",
-    vnp_Amount: amount * 100, // VNPay requires amount in smallest unit (1đ = 100)
+    vnp_Amount: vnpAmount.toString(), // Must be string of integer
     vnp_ReturnUrl: VNPAY_CONFIG.vnp_ReturnUrl,
     vnp_IpAddr: ipAddr,
     vnp_CreateDate: createDate,
@@ -85,15 +85,34 @@ export function createPaymentUrl(params: {
     vnp_Params.vnp_BankCode = bankCode;
   }
 
-  // Sort and create signature
+  // Sort parameters alphabetically
   vnp_Params = sortObject(vnp_Params);
 
-  const signData = querystring.stringify(vnp_Params, { encode: false });
+  // Create signature data with URL encoded values (VNPay requirement)
+  // Format: key1=encodedValue1&key2=encodedValue2...
+  const signData = Object.keys(vnp_Params)
+    .map(key => {
+      const value = vnp_Params[key];
+      // Encode value but replace space with + (VNPay standard)
+      const encodedValue = encodeURIComponent(value).replace(/%20/g, '+');
+      return `${key}=${encodedValue}`;
+    })
+    .join("&");
+    
   const secureHash = createSignature(signData, VNPAY_CONFIG.vnp_HashSecret);
 
   vnp_Params.vnp_SecureHash = secureHash;
 
-  const paymentUrl = VNPAY_CONFIG.vnp_Url + "?" + querystring.stringify(vnp_Params, { encode: false });
+  // Build final URL with same encoding as signature
+  const queryParams = Object.keys(vnp_Params)
+    .map(key => {
+      const value = vnp_Params[key];
+      const encodedValue = encodeURIComponent(value).replace(/%20/g, '+');
+      return `${key}=${encodedValue}`;
+    })
+    .join("&");
+    
+  const paymentUrl = VNPAY_CONFIG.vnp_Url + "?" + queryParams;
 
   return paymentUrl;
 }
@@ -107,12 +126,22 @@ export function verifyReturnUrl(vnp_Params: any): boolean {
   const secureHash = vnp_Params.vnp_SecureHash;
 
   // Remove hash params before verification
-  delete vnp_Params.vnp_SecureHash;
-  delete vnp_Params.vnp_SecureHashType;
+  const params = { ...vnp_Params };
+  delete params.vnp_SecureHash;
+  delete params.vnp_SecureHashType;
 
-  // Sort and create signature
-  const sortedParams = sortObject(vnp_Params);
-  const signData = querystring.stringify(sortedParams, { encode: false });
+  // Sort and create signature (same format as when creating payment URL)
+  // VNPay callback already has values in their raw form (not URL encoded in params object)
+  // So we need to encode them the same way we did when creating the payment URL
+  const sortedParams = sortObject(params);
+  const signData = Object.keys(sortedParams)
+    .map(key => {
+      const value = sortedParams[key];
+      const encodedValue = encodeURIComponent(value).replace(/%20/g, '+');
+      return `${key}=${encodedValue}`;
+    })
+    .join("&");
+    
   const checkSum = createSignature(signData, VNPAY_CONFIG.vnp_HashSecret);
 
   return secureHash === checkSum;

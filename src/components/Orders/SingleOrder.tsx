@@ -1,219 +1,164 @@
 import React, { useState } from "react";
-import OrderActions from "./OrderActions";
 import OrderModal from "./OrderModal";
 
-const SingleOrder = ({ orderItem, smallView }: any) => {
-    const [showQuickView, setShowQuickView] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
-  const [showEdit, setShowEdit] = useState(false);
+const SingleOrder = ({ orderItem }: any) => {
+  const [showModal, setShowModal] = useState(false);
 
-  const toggleDetails = () => {
-    setShowDetails(!showDetails);
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("vi-VN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   };
 
-  const toggleEdit = () => {
-    setShowEdit(!showEdit);
+  const formatPrice = (cents: number) => {
+    return (cents / 100).toLocaleString("vi-VN") + "₫";
   };
 
-  const toggleModal = (status: boolean) => {
-    setShowDetails(status);
-    setShowEdit(status);
+  const getStatusConfig = (status: string) => {
+    const configs: Record<string, { bg: string; text: string; icon: string; label: string; borderColor: string }> = {
+      PENDING: { bg: "bg-yellow-light", text: "text-yellow-dark-2", icon: "⏳", label: "Chờ xác nhận", borderColor: "border-yellow" },
+      PROCESSING: { bg: "bg-blue-light-5", text: "text-blue", icon: "🔄", label: "Đang xử lý", borderColor: "border-blue" },
+      SHIPPED: { bg: "bg-purple-light-4", text: "text-purple-dark", icon: "🚚", label: "Đang giao", borderColor: "border-purple" },
+      COMPLETED: { bg: "bg-green-light-5", text: "text-green-dark", icon: "✅", label: "Hoàn thành", borderColor: "border-green" },
+      CANCELLED: { bg: "bg-red-light-5", text: "text-red-dark", icon: "❌", label: "Đã hủy", borderColor: "border-red" },
+    };
+    return configs[status] || { bg: "bg-gray-2", text: "text-gray-7", icon: "ℹ", label: status, borderColor: "border-gray-4" };
   };
+
+  const statusConfig = getStatusConfig(orderItem.status);
 
   return (
     <>
-      {/* Modal chi tiết đơn hàng */}
-      {showQuickView && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 min-w-[350px] max-w-[90vw] relative">
-            <button onClick={() => setShowQuickView(false)} className="absolute top-2 right-2 text-gray-500 hover:text-red-500 text-xl">×</button>
-            <h2 className="text-lg font-bold mb-4">Chi tiết đơn hàng</h2>
-            <div className="mb-2"><span className="font-semibold">Mã đơn:</span> <span className="font-mono">{orderItem.orderId || orderItem.id}</span></div>
-            <div className="mb-2"><span className="font-semibold">Ngày đặt:</span> {orderItem.createdAt}</div>
-            <div className="mb-2"><span className="font-semibold">Trạng thái:</span> {orderItem.status}</div>
-            <div className="mb-2">
-              <span className="font-bold text-base md:text-lg">Tổng tiền:</span> <span className="text-blue font-bold text-lg md:text-xl">{typeof orderItem.totalCents === "number" ? `${(orderItem.totalCents/100).toLocaleString()}₫` : orderItem.totalCents || "-"}</span>
-            </div>
-            {orderItem.status === "CANCELLED" && orderItem.cancelReason && (
-              <div className="mb-2">
-                <span className="font-semibold text-red-600">Lý do hủy:</span> <span className="text-red-500">{orderItem.cancelReason}</span>
+      {/* Order Card - Completely New Design */}
+      <div className={`group bg-white rounded-2xl shadow-1 hover:shadow-3 transition-all duration-300 overflow-hidden border-l-4 ${statusConfig.borderColor}`}>
+        <div className="p-6">
+          {/* Header Row */}
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
+            {/* Left: Order ID & Status */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-blue-light-6 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-6 mb-1">Mã đơn hàng</p>
+                  <p className="font-bold text-dark text-lg">
+                    #{(orderItem.id || "--------").slice(-8).toUpperCase()}
+                  </p>
+                </div>
               </div>
-            )}
-            <div className="mt-4">
-              <h3 className="font-semibold mb-2">Sản phẩm</h3>
-              <table className="min-w-full border text-sm">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-2 py-1 border">Ảnh</th>
-                    <th className="px-2 py-1 border">Tên sản phẩm</th>
-                    <th className="px-2 py-1 border">Số lượng</th>
-                    <th className="px-2 py-1 border">Giá tiền</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orderItem.items?.map((item: any, idx: number) => (
-                    <tr key={item.id || idx}>
-                      <td className="px-2 py-1 border text-center">
-                        {item.product?.imageUrl ? (
-                          <img src={item.product.imageUrl} alt={item.product?.name || "Sản phẩm"} className="w-12 h-12 object-cover rounded" />
-                        ) : (
-                          <span className="text-gray-400">Không có ảnh</span>
-                        )}
-                      </td>
-                      <td className="px-2 py-1 border">{item.product?.name || item.productId}</td>
-                      <td className="px-2 py-1 border text-center">{item.quantity}</td>
-                      <td className="px-2 py-1 border">{item.priceCents ? `${(item.priceCents/100).toLocaleString()}₫` : "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-      {!smallView && (
-        <div className="items-center justify-between border rounded-xl shadow-md py-6 px-8 mb-5 bg-white hover:shadow-lg transition-all flex flex-wrap">
-          <div className="min-w-[111px] flex items-center gap-2">
-            <span className="font-bold text-gray-7">#{(orderItem.orderId || orderItem.id || "--------").slice(-8)}</span>
-            {/* Đảm bảo căn lề cho badge trạng thái, đặc biệt với CANCELLED */}
-            {orderItem.status === "CANCELLED" && (
-              <span className="inline-block px-2 py-0.5 rounded bg-red-light-5 text-red-dark text-xs font-semibold ml-2 align-middle">Đã hủy</span>
-            )}
-            {orderItem.status === "PENDING" && (
-              <span className="inline-block px-2 py-0.5 rounded bg-yellow-light text-black text-xs font-semibold ml-2 align-middle">Chờ xác nhận</span>
-            )}
-            {orderItem.status === "PROCESSING" && (
-              <span className="inline-block px-2 py-0.5 rounded bg-blue-light text-white text-xs font-semibold ml-2 align-middle">Đang xử lý</span>
-            )}
-            {orderItem.status === "SHIPPED" && (
-              <span className="inline-block px-2 py-0.5 rounded bg-purple-light text-black text-xs font-semibold ml-2 align-middle">Đang giao</span>
-            )}
-            {orderItem.status === "COMPLETED" && (
-              <span className="inline-block px-2 py-0.5 rounded bg-green-light text-black text-xs font-semibold ml-2 align-middle">Đã hoàn thành</span>
-            )}
-          </div>
-          <div className="min-w-[175px]">
-            <p className="text-custom-sm text-gray-6">{orderItem.createdAt}</p>
-          </div>
-
-          <div className="min-w-[128px]">
-            <span
-              className={`inline-flex items-center gap-1 text-custom-sm py-1 px-3 rounded-full capitalize font-semibold ${
-                orderItem.status === "PENDING"
-                  ? "bg-yellow-light text-black border border-yellow-dark"
-                  : orderItem.status === "PROCESSING"
-                  ? "bg-blue-light text-white border border-blue-dark"
-                  : orderItem.status === "SHIPPED"
-                  ? "bg-purple-light text-black border border-purple-dark"
-                  : orderItem.status === "COMPLETED"
-                  ? "bg-green-light text-black border border-green-dark"
-                  : orderItem.status === "CANCELLED"
-                  ? "bg-red-light-5 text-red-dark border border-red"
-                  : "bg-gray-3 text-gray-6 border border-gray-4"
-              }`}
-            >
-              {orderItem.status === "PENDING" && <span>⏳</span>}
-              {orderItem.status === "PROCESSING" && <span>🔄</span>}
-              {orderItem.status === "SHIPPED" && <span>🚚</span>}
-              {orderItem.status === "COMPLETED" && <span>✔️</span>}
-              {orderItem.status === "CANCELLED" && <span>❌</span>}
-              {orderItem.status}
-            </span>
-          </div>
-
-          <div className="min-w-[213px]">
-            <p className="text-custom-sm text-dark font-medium">{orderItem.title}</p>
-            {/* Hiển thị lý do hủy đơn hàng nếu có */}
-            {orderItem.status === "CANCELLED" && orderItem.cancelReason && (
-              <div className="mt-2 px-3 py-2 rounded bg-red-light-6 border border-red-light-4 flex items-center">
-                <span className="font-semibold text-red-dark mr-2">Lý do hủy:</span>
-                <span className="text-red-500">{orderItem.cancelReason}</span>
-              </div>
-            )}
-          </div>
-
-          <div className="min-w-[113px] w-full flex justify-center">
-            <p className="text-base md:text-lg text-blue font-bold text-center w-full">
-              Tổng tiền: <span className="text-lg md:text-xl text-blue font-bold">{typeof orderItem.totalCents === "number" ? `${(orderItem.totalCents/100).toLocaleString()}₫` : orderItem.totalCents || "-"}</span>
-            </p>
-          </div>
-
-          <div className="flex gap-5 items-center">
-            <OrderActions
-              toggleDetails={() => setShowQuickView(true)}
-              toggleEdit={toggleEdit}
-            />
-          </div>
-        </div>
-      )}
-
-      {smallView && (
-        <div className="block md:hidden">
-          <div className="py-5 px-4 mb-4 rounded-xl border shadow bg-white">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="font-bold text-gray-7">#{(orderItem.orderId || orderItem.id || "--------").slice(-8)}</span>
-              {orderItem.status === "CANCELLED" && (
-                <span className="inline-block px-2 py-0.5 rounded bg-red-light-5 text-red-dark text-xs font-semibold ml-2">Đã hủy</span>
-              )}
-              {orderItem.status === "PENDING" && (
-                <span className="inline-block px-2 py-0.5 rounded bg-yellow-light text-black text-xs font-semibold ml-2">Chờ xác nhận</span>
-              )}
-              {orderItem.status === "PROCESSING" && (
-                <span className="inline-block px-2 py-0.5 rounded bg-blue-light text-white text-xs font-semibold ml-2">Đang xử lý</span>
-              )}
-              {orderItem.status === "SHIPPED" && (
-                <span className="inline-block px-2 py-0.5 rounded bg-purple-light text-black text-xs font-semibold ml-2">Đang giao</span>
-              )}
-              {orderItem.status === "COMPLETED" && (
-                <span className="inline-block px-2 py-0.5 rounded bg-green-light text-black text-xs font-semibold ml-2">Đã hoàn thành</span>
-              )}
-            </div>
-            <div className="mb-1">
-              <span className="font-bold">Ngày đặt:</span> <span className="text-gray-6">{orderItem.createdAt}</span>
-            </div>
-            <div className="mb-1">
-              <span className="font-bold">Trạng thái:</span> <span className={`font-semibold px-2 py-1 rounded ${
-                orderItem.status === "PENDING"
-                  ? "bg-yellow-light text-black"
-                  : orderItem.status === "PROCESSING"
-                  ? "bg-blue-light text-white"
-                  : orderItem.status === "SHIPPED"
-                  ? "bg-purple-light text-black"
-                  : orderItem.status === "COMPLETED"
-                  ? "bg-green-light text-black"
-                  : orderItem.status === "CANCELLED"
-                  ? "bg-red-light-5 text-red-dark"
-                  : "bg-gray-3 text-gray-6"
-              }`}>
-                {orderItem.status === "PENDING" && "⏳"}
-                {orderItem.status === "PROCESSING" && "🔄"}
-                {orderItem.status === "SHIPPED" && "🚚"}
-                {orderItem.status === "COMPLETED" && "✔️"}
-                {orderItem.status === "CANCELLED" && "❌"}
-                {orderItem.status}
+              <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm ${statusConfig.bg} ${statusConfig.text} shadow-sm`}>
+                <span>{statusConfig.icon}</span>
+                {statusConfig.label}
               </span>
             </div>
-            <div className="mb-1 flex flex-col gap-1">
-              <span className="font-bold">Tiêu đề:</span> <span className="text-dark">{orderItem.title}</span>
-              {/* Hiển thị lý do hủy đơn hàng nếu có */}
-              {orderItem.status === "CANCELLED" && orderItem.cancelReason && (
-                <div className="mt-1 px-3 py-2 rounded bg-red-light-6 border border-red-light-4 flex items-center">
-                  <span className="font-semibold text-red-dark mr-2">Lý do hủy:</span>
-                  <span className="text-red-500">{orderItem.cancelReason}</span>
-                </div>
-              )}
-            </div>
-            <div className="mb-1 w-full flex justify-center">
-              <span className="font-bold text-base md:text-lg">Tổng tiền:</span> <span className="text-blue font-bold text-lg md:text-xl">{typeof orderItem.totalCents === "number" ? `${(orderItem.totalCents/100).toLocaleString()}₫` : orderItem.totalCents || "-"}</span>
-            </div>
-            <div className="mt-3 flex items-center">
-              <OrderActions
-                toggleDetails={toggleDetails}
-                toggleEdit={toggleEdit}
-              />
+
+            {/* Right: Date & Total */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex items-center gap-2 text-gray-6">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span className="text-sm">{formatDate(orderItem.createdAt)}</span>
+              </div>
+              <div className="bg-blue-light-6 px-4 py-2 rounded-xl">
+                <p className="text-xs text-gray-6 mb-1">Tổng tiền</p>
+                <p className="font-bold text-blue text-xl">{formatPrice(orderItem.totalCents)}</p>
+              </div>
             </div>
           </div>
+
+          {/* Products Preview Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+            {orderItem.items?.slice(0, 3).map((item: any, idx: number) => (
+              <div key={item.id || idx} className="bg-gray-1 rounded-xl p-4 border border-gray-3 hover:border-blue transition-colors group/item">
+                <div className="flex gap-3">
+                  <div className="w-16 h-16 flex-shrink-0 bg-white rounded-lg overflow-hidden border-2 border-gray-3 group-hover/item:border-blue transition-colors">
+                    {item.product?.imageUrl ? (
+                      <img 
+                        src={item.product.imageUrl} 
+                        alt={item.product?.name || "Product"} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-4">
+                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-dark text-sm mb-1 line-clamp-2">{item.product?.name || item.productId}</p>
+                    <p className="text-xs text-gray-6">SL: <span className="font-bold text-dark">{item.quantity}</span></p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {orderItem.items?.length > 3 && (
+              <div className="bg-gray-1 rounded-xl p-4 border border-gray-3 flex items-center justify-center">
+                <div className="text-center">
+                  <p className="font-bold text-2xl text-blue mb-1">+{orderItem.items.length - 3}</p>
+                  <p className="text-xs text-gray-6">sản phẩm khác</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Section */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-4 border-t-2 border-gray-3">
+            {/* Left: Payment Method */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gray-1 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs text-gray-6">Thanh toán</p>
+                <p className="font-semibold text-dark capitalize">{orderItem.paymentMethod || "COD"}</p>
+              </div>
+            </div>
+
+            {/* Right: Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowModal(true)}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue hover:bg-blue-dark text-white px-6 py-3 rounded-xl font-bold transition-all duration-200 shadow-2 hover:shadow-3 group/btn"
+              >
+                <svg className="w-5 h-5 group-hover/btn:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <span>Xem chi tiết</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Cancel Reason */}
+          {orderItem.status === "CANCELLED" && orderItem.cancelReason && (
+            <div className="mt-4 p-4 bg-red-light-6 border-l-4 border-red rounded-xl">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-red flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div>
+                  <p className="font-bold text-red-dark text-sm mb-1">Lý do hủy đơn</p>
+                  <p className="text-red-dark">{orderItem.cancelReason}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* Modal */}
+      {showModal && (
+        <OrderModal orderItem={orderItem} onClose={() => setShowModal(false)} />
       )}
     </>
   );
