@@ -8,9 +8,9 @@ const NAV = [
   { href: "/admin/categories", label: "Danh mục" },
   { href: "/admin/orders", label: "Đơn hàng" },
   { href: "/admin/users", label: "Users" },
+  { href: "/admin/coupons", label: "Mã giảm giá" },
+  { href: "/admin/vip-config", label: "VIP Tier" },
   { href: "/admin/reviews", label: "Đánh giá" },
-  { href: "/admin/banner", label: "Banner/Trang chủ" },
-  { href: "/admin/media", label: "Media" },
   { href: "/admin/settings", label: "Cài đặt" },
 ];
 
