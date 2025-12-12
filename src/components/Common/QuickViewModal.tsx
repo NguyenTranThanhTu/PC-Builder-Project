@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 
 import { useModalContext } from "@/app/context/QuickViewModalContext";
 import { AppDispatch, useAppSelector } from "@/redux/store";
@@ -459,10 +460,11 @@ const QuickViewModal = () => {
 
                 {/* Nút Xem chi tiết */}
                 {product?.productSlug && (
-                  <a
-                    href={`/shop-details/${product.productSlug}`}
+                  <Link
+                    href={`/shop/${product.productSlug}`}
                     className="inline-flex items-center gap-2 font-medium text-white bg-green py-3 px-6 rounded-md ease-out duration-200 hover:bg-green-dark focus:outline-none focus:ring-2 focus:ring-green-400"
                     style={{ textDecoration: 'none' }}
+                    onClick={closeModal}
                   >
                     <svg
                       className="fill-current"
@@ -480,7 +482,7 @@ const QuickViewModal = () => {
                       />
                     </svg>
                     Xem chi tiết
-                  </a>
+                  </Link>
                 )}
               </div>
             </div>

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { formatVnd } from "@/lib/formatVnd";
+import { formatVnd, formatVndFromCents } from "@/lib/formatVnd";
 import Link from "next/link";
 
 interface VIPTierConfig {
@@ -268,7 +268,7 @@ export default function VIPConfigPage() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between p-3 bg-gray-1 rounded-lg">
                       <span className="text-sm font-medium text-dark-3">Chi tiêu tối thiểu:</span>
-                      <span className="text-sm font-bold text-dark">{formatVnd(tier.minSpend)}</span>
+                      <span className="text-sm font-bold text-dark">{formatVndFromCents(tier.minSpend)}</span>
                     </div>
 
                     <div className="flex items-center justify-between p-3 bg-green/10 rounded-lg">

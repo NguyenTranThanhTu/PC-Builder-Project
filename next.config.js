@@ -12,6 +12,11 @@ const nextConfig = {
 				hostname: 'tse1.mm.bing.net',
 				pathname: '/**',
 			},
+			{
+				protocol: 'https',
+				hostname: 'res.cloudinary.com',
+				pathname: '/**',
+			},
 		],
 		domains: ['localhost', 'lh3.googleusercontent.com'],
 	},

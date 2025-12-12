@@ -46,7 +46,7 @@ const Categories = () => {
     const load = async () => {
       try {
         setLoading(true);
-        const res = await fetch("/api/public/categories");
+        const res = await fetch("/api/public/categories", { cache: 'no-store' });
         if (!res.ok) throw new Error("Không tải được danh mục");
         const data: CategoryApi[] = await res.json();
         setItems(

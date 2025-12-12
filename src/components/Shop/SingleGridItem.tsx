@@ -188,7 +188,7 @@ const SingleGridItem = ({ item }: { item: Product }) => {
       </div>
 
       <h3 className="font-medium text-dark ease-out duration-200 hover:text-blue mb-1.5">
-        <Link href={item?.productSlug ? `/shop-details/${item.productSlug}` : "/shop-details"}> {item.title} </Link>
+        <Link href={item?.productSlug ? `/shop/${item.productSlug}` : "/shop"}> {item.title} </Link>
       </h3>
       {item.specSummary && (
         <p className="text-[11px] text-gray-600 mb-2 line-clamp-1" title={item.specSummary}>{item.specSummary}</p>
@@ -202,7 +202,7 @@ const SingleGridItem = ({ item }: { item: Product }) => {
       </span>
       <div className="mt-1">
         <Link
-          href={item?.productSlug ? `/shop-details/${item.productSlug}` : "/shop-details"}
+          href={item?.productSlug ? `/shop/${item.productSlug}` : "/shop"}
           className="text-xs text-blue hover:underline"
         >
           View specs

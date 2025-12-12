@@ -13,6 +13,7 @@ function VnCurrency({ cents }: { cents: number }) {
 
 export default async function NewArrival() {
   const products = await prisma.product.findMany({
+    where: { status: "PUBLISHED" },
     orderBy: { createdAt: "desc" },
     take: 8,
     include: { category: true },

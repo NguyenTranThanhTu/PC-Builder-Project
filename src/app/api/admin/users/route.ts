@@ -37,10 +37,17 @@ export async function GET(req: NextRequest) {
         role: true,
         vipTier: true,
         totalSpent: true,
+        isBanned: true,
         createdAt: true,
       },
     }),
   ]);
 
-  return NextResponse.json({ users, total });
+  return NextResponse.json({ 
+    users: users.map(u => ({
+      ...u,
+      totalSpent: Number(u.totalSpent)
+    })), 
+    total 
+  });
 }

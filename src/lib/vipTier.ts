@@ -17,7 +17,8 @@ export async function checkAndUpgradeVIPTier(userId: string) {
   // Find highest tier user qualifies for
   let newTier = 0;
   for (const tier of tiers) {
-    if (user.totalSpent >= tier.minSpend) {
+    // Convert BigInt to Number for comparison
+    if (Number(user.totalSpent) >= Number(tier.minSpend)) {
       newTier = tier.tier;
       break;
     }

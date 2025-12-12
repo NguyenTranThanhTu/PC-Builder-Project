@@ -142,7 +142,7 @@ const SingleListItem = ({ item }: { item: Product }) => {
         <div className="w-full flex flex-col gap-5 sm:flex-row sm:items-center justify-center sm:justify-between py-5 px-4 sm:px-7.5 lg:pl-11 lg:pr-12">
           <div>
             <h3 className="font-medium text-dark ease-out duration-200 hover:text-blue mb-1.5">
-              <Link href={item?.productSlug ? `/shop-details/${item.productSlug}` : "/shop-details"}> {item.title} </Link>
+              <Link href={item?.productSlug ? `/shop/${item.productSlug}` : "/shop"}> {item.title} </Link>
             </h3>
             {item.specSummary && (
               <p className="text-[12px] text-gray-600 mb-2 line-clamp-1" title={item.specSummary}>{item.specSummary}</p>
@@ -156,7 +156,7 @@ const SingleListItem = ({ item }: { item: Product }) => {
             </span>
             <div className="mt-1">
               <Link
-                href={item?.productSlug ? `/shop-details/${item.productSlug}` : "/shop-details"}
+                href={item?.productSlug ? `/shop/${item.productSlug}` : "/shop"}
                 className="text-xs text-blue hover:underline"
               >
                 View specs

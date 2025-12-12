@@ -64,26 +64,45 @@ export async function GET(
     // Get VIP tier info
     let vipTierInfo = null;
     if (user.vipTier > 0) {
-      vipTierInfo = await prisma.vIPTierConfig.findUnique({
+      const tier = await prisma.vIPTierConfig.findUnique({
         where: { tier: user.vipTier },
       });
+      if (tier) {
+        vipTierInfo = { ...tier, minSpend: Number(tier.minSpend) };
+      }
     }
 
     // Get next VIP tier info
-    const nextVipTier = await prisma.vIPTierConfig.findFirst({
+    let nextVipTier = null;
+    const nextTier = await prisma.vIPTierConfig.findFirst({
       where: { tier: user.vipTier + 1 },
       orderBy: { tier: "asc" },
     });
+    if (nextTier) {
+      nextVipTier = { ...nextTier, minSpend: Number(nextTier.minSpend) };
+    }
 
     return NextResponse.json({
       user: {
-        ...user,
-        hashedPassword: undefined, // Don't expose password
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        image: user.image,
+        role: user.role,
+        vipTier: user.vipTier,
+        totalSpent: Number(user.totalSpent),
+        isBanned: user.isBanned,
+        banReason: user.banReason,
+        bannedAt: user.bannedAt,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        orders: user.orders,
+        reviews: user.reviews,
       },
       stats: {
         totalOrders: user._count.orders,
         completedOrders,
-        totalSpent: totalSpent._sum.totalCents || 0,
+        totalSpent: Number(totalSpent._sum.totalCents || 0),
         totalReviews: user._count.reviews,
       },
       vipTierInfo,

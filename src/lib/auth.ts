@@ -46,6 +46,12 @@ providers.push(
       // Find user by email
       const user = await prisma.user.findUnique({ where: { email: credentials.email } });
       if (!user || !user.hashedPassword) return null;
+      
+      // Check if user is banned
+      if (user.isBanned) {
+        throw new Error(`BANNED:${user.banReason || "Tài khoản của bạn đã bị khóa"}`);
+      }
+      
       // Compare password (assume bcrypt)
       const bcrypt = require("bcryptjs");
       const isValid = await bcrypt.compare(credentials.password, user.hashedPassword);
@@ -114,5 +120,9 @@ export async function requireAdmin() {
       response: NextResponse.json({ error: "Unauthorized" }, { status: 403 }),
     };
   }
-  return { ok: true as const, session };
+  return { 
+    ok: true as const, 
+    session,
+    user: session?.user as any
+  };
 }

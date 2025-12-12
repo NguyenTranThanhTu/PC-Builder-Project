@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { formatVnd } from "@/lib/formatVnd";
+import { formatVnd, formatVndFromCents } from "@/lib/formatVnd";
 
 // User type
 interface UserItem {
@@ -13,6 +13,7 @@ interface UserItem {
   role: "USER" | "ADMIN";
   vipTier: number;
   totalSpent: number;
+  isBanned: boolean;
   createdAt: string;
 }
 
@@ -156,7 +157,7 @@ export default function AdminUsersPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-dark-3 mb-1">Tổng doanh thu</p>
-                <p className="text-2xl font-bold text-dark">{formatVnd(stats.totalRevenue)}</p>
+                <p className="text-2xl font-bold text-dark">{formatVndFromCents(stats.totalRevenue)}</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-green/10 flex items-center justify-center">
                 <svg className="w-6 h-6 text-green-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -303,10 +304,17 @@ export default function AdminUsersPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {getVIPBadge(user.vipTier)}
+                        <div className="flex items-center gap-2">
+                          {getVIPBadge(user.vipTier)}
+                          {user.isBanned && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-red-light-5 text-red-dark border border-red">
+                              🚫 Bị chặn
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <p className="text-sm font-bold text-dark">{formatVnd(user.totalSpent)}</p>
+                        <p className="text-sm font-bold text-dark">{formatVndFromCents(user.totalSpent)}</p>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <p className="text-sm font-medium text-dark-2">{new Date(user.createdAt).toLocaleDateString("vi-VN")}</p>

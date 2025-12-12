@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "User" ALTER COLUMN "totalSpent" SET DATA TYPE BIGINT;
+
+-- AlterTable
+ALTER TABLE "VIPTierConfig" ALTER COLUMN "minSpend" SET DATA TYPE BIGINT;

@@ -20,6 +20,7 @@ export default function NewProductPage() {
   const [categoryId, setCategoryId] = useState<string>("");
   const [name, setName] = useState("");
   const [price, setPrice] = useState<string>("");
+  const [priceDisplay, setPriceDisplay] = useState<string>(""); // For formatted display
   const [stock, setStock] = useState<string>("0");
   const [featured, setFeatured] = useState(false);
   const [status, setStatus] = useState<"DRAFT" | "PUBLISHED" | "ARCHIVED">("DRAFT");
@@ -201,6 +202,28 @@ export default function NewProductPage() {
     return null;
   };
 
+  // Handle price input with formatting
+  const handlePriceChange = (value: string) => {
+    // Remove all non-digit characters
+    const numericValue = value.replace(/\D/g, '');
+    
+    if (numericValue === '') {
+      setPrice('');
+      setPriceDisplay('');
+      return;
+    }
+    
+    // Store raw numeric value
+    setPrice(numericValue);
+    
+    // Format for display
+    const formatted = Number(numericValue).toLocaleString('vi-VN');
+    setPriceDisplay(formatted);
+    
+    // Validate
+    validateField('price', numericValue);
+  };
+
   const handleSave = async () => {
     setError(null); setSuccess(null);
     if (!imageUrl) {
@@ -218,9 +241,16 @@ export default function NewProductPage() {
           absoluteImageUrl = window.location.origin + imageUrl;
         }
       }
+      
+      // Convert price to cents: price is already in VND, multiply by 100
+      const priceInVnd = Number(price);
+      const priceCents = Math.round(priceInVnd * 100);
+      // Convert price to cents and log for debugging
+      console.log('Price conversion:', { inputPrice: price, priceInVnd, priceCents });
+      
       const body = {
         name: name.trim(),
-        priceCents: Math.round(Number(price) * 100),
+        priceCents,
         stock: Number(stock),
         categoryId,
         featured,
@@ -245,9 +275,12 @@ export default function NewProductPage() {
         return;
       }
       setSuccess("Tạo sản phẩm thành công");
-      setName(""); setPrice(""); setStock("0"); setDescription(""); setAttributes(prev => prev.map(a => ({...a, stringValue: a.stringValue!=null?"":null, numberValue: a.numberValue!=null?0:null })));
+      setName(""); setPrice(""); setPriceDisplay(""); setStock("0"); setDescription(""); 
+      setImageFile(null); setImagePreview(""); setImageUrl(null); setImageBlurData(null);
+      setAttributes(prev => prev.map(a => ({...a, stringValue: a.stringValue!=null?"":null, numberValue: a.numberValue!=null?0:null })));
     } catch (e: any) {
-      setError(e.message);
+      console.error("Save product error:", e);
+      setError(e.message || "Đã xảy ra lỗi khi tạo sản phẩm");
     } finally {
       setSaving(false);
     }
@@ -277,9 +310,20 @@ export default function NewProductPage() {
             {fieldErrors.categoryId && <div className="text-xs text-red-600 mt-1" style={{color:'#dc2626'}}>{fieldErrors.categoryId}</div>}
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Giá (VND)</label>
-            <input className="w-full border rounded px-3 py-2 text-sm" value={price} onChange={e=>{setPrice(e.target.value); validateField('price', e.target.value);}} placeholder="12990000" />
+            <label className="block text-sm font-medium mb-1">
+              Giá (VND)
+              {priceDisplay && <span className="ml-2 text-xs text-gray-500">≈ {priceDisplay}₫</span>}
+            </label>
+            <input 
+              className="w-full border rounded px-3 py-2 text-sm font-mono" 
+              value={priceDisplay || price} 
+              onChange={e => handlePriceChange(e.target.value)} 
+              placeholder="Ví dụ: 1200000 hoặc 1,200,000" 
+            />
             {fieldErrors.price && <div className="text-xs text-red-600 mt-1" style={{color:'#dc2626'}}>{fieldErrors.price}</div>}
+            <div className="text-xs text-gray-500 mt-1">
+              💡 Nhập giá theo VND (ví dụ: 1200000 cho 1.2 triệu đồng)
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Tồn kho</label>

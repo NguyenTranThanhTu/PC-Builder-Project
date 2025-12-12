@@ -15,7 +15,10 @@ function VnCurrency({ cents }: { cents: number }) {
 export default async function BestSeller() {
   // Lấy các sản phẩm được gắn featured để hiển thị như Best Sellers
   const products = await prisma.product.findMany({
-    where: { featured: true },
+    where: { 
+      featured: true,
+      status: "PUBLISHED"
+    },
     orderBy: { updatedAt: "desc" },
     take: 6,
     include: { category: true },

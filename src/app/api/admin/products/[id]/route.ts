@@ -158,13 +158,16 @@ export async function DELETE(_req: NextRequest, context: { params: Promise<{ id:
         where: { id },
         data: { status: "ARCHIVED" as ProductStatus, archivedAt: new Date() },
       });
+      // Revalidate to remove from storefront
+      await revalidateAfterProductChange(product.categoryId);
       return NextResponse.json({ ok: true, archived: true });
     }
     // Nếu không có order liên quan, cho phép xóa cứng
     await prisma.productAttribute.deleteMany({ where: { productId: id } });
     // Xóa các liên kết khác nếu cần (ví dụ: ảnh, v.v.)
     await prisma.product.delete({ where: { id } });
-    // Không cần revalidate vì đã xóa hoàn toàn
+    // Revalidate to remove from storefront
+    await revalidateAfterProductChange(product.categoryId);
     return NextResponse.json({ ok: true, deleted: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Failed to delete" }, { status: 500 });

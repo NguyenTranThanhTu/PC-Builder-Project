@@ -27,23 +27,28 @@ export async function GET(req: NextRequest) {
     // Get current tier config
     let tierConfig = null;
     if (user.vipTier > 0) {
-      tierConfig = await prisma.vIPTierConfig.findUnique({
+      const tier = await prisma.vIPTierConfig.findUnique({
         where: { tier: user.vipTier },
       });
+      if (tier) {
+        tierConfig = { ...tier, minSpend: Number(tier.minSpend) };
+      }
     }
 
     // Get next tier config
     let nextTierConfig = null;
     let progressPercent = 0;
     if (user.vipTier < 3) {
-      nextTierConfig = await prisma.vIPTierConfig.findUnique({
+      const nextTier = await prisma.vIPTierConfig.findUnique({
         where: { tier: user.vipTier + 1 },
       });
 
-      if (nextTierConfig) {
+      if (nextTier) {
+        nextTierConfig = { ...nextTier, minSpend: Number(nextTier.minSpend) };
         const currentMinSpend = tierConfig?.minSpend || 0;
-        const nextMinSpend = nextTierConfig.minSpend;
-        const spendInRange = user.totalSpent - currentMinSpend;
+        const nextMinSpend = Number(nextTier.minSpend);
+        const totalSpentNum = Number(user.totalSpent);
+        const spendInRange = totalSpentNum - currentMinSpend;
         const rangeSize = nextMinSpend - currentMinSpend;
         progressPercent = Math.min(100, Math.round((spendInRange / rangeSize) * 100));
       }
@@ -51,7 +56,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       vipTier: user.vipTier,
-      totalSpent: user.totalSpent,
+      totalSpent: Number(user.totalSpent),
       tierConfig,
       nextTierConfig,
       progressPercent,

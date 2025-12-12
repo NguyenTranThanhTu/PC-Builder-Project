@@ -37,6 +37,7 @@ export async function GET(req: Request) {
                 select: {
                   name: true,
                   imageUrl: true,
+                  slug: true,
                 },
               },
             },
@@ -47,8 +48,17 @@ export async function GET(req: Request) {
       prisma.order.count({ where }),
     ]);
 
+    // Convert BigInt to Number for JSON serialization
+    const serializedOrders = orders.map(order => ({
+      ...order,
+      user: order.user ? {
+        ...order.user,
+        totalSpent: Number(order.user.totalSpent)
+      } : null
+    }));
+
     return NextResponse.json({
-      orders,
+      orders: serializedOrders,
       total,
       page,
       pageSize,
@@ -109,9 +119,14 @@ export async function POST(req: Request) {
     for (const it of sanitized) {
       if (!productIds.includes(it.productId)) productIds.push(it.productId);
     }
-    const products = await prisma.product.findMany({ where: { id: { in: productIds } } });
+    const products = await prisma.product.findMany({ 
+      where: { 
+        id: { in: productIds },
+        status: "PUBLISHED" // Only allow ordering published products
+      } 
+    });
     if (products.length !== productIds.length) {
-      return NextResponse.json({ error: "Có sản phẩm không tồn tại" }, { status: 400 });
+      return NextResponse.json({ error: "Có sản phẩm không khả dụng hoặc đã ngừng bán" }, { status: 400 });
     }
 
     // Map product price and compute totals
@@ -288,7 +303,17 @@ export async function POST(req: Request) {
       where: { id: result.id },
       include: { user: true, items: true },
     });
-    return NextResponse.json({ order, vipUpgrade }, { status: 201 });
+    
+    // Convert BigInt to Number for JSON serialization
+    const serializedOrder = {
+      ...order,
+      user: order?.user ? {
+        ...order.user,
+        totalSpent: Number(order.user.totalSpent)
+      } : null
+    };
+    
+    return NextResponse.json({ order: serializedOrder, vipUpgrade }, { status: 201 });
   } catch (err) {
     console.error("Create order error", err);
     return NextResponse.json({ error: "Tạo đơn hàng thất bại" }, { status: 500 });

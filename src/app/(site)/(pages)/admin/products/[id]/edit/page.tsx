@@ -37,6 +37,7 @@ export default function EditProductPage({ params }: any) {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [price, setPrice] = useState<string>("");
+  const [priceDisplay, setPriceDisplay] = useState<string>("");
   const [stock, setStock] = useState<string>("0");
   const [featured, setFeatured] = useState(false);
   const [status, setStatus] = useState<"DRAFT" | "PUBLISHED" | "ARCHIVED">("DRAFT");
@@ -102,7 +103,12 @@ export default function EditProductPage({ params }: any) {
           setCategoryId(p.categoryId);
           setName(p.name);
           setSlug(p.slug);
-          setPrice((p.priceCents / 100).toString());
+          
+          // Convert priceCents to VND and format
+          const priceInVnd = Math.round(p.priceCents / 100);
+          setPrice(priceInVnd.toString());
+          setPriceDisplay(priceInVnd.toLocaleString('vi-VN'));
+          
           setStock(p.stock.toString());
           setFeatured(p.featured);
           setStatus(p.status);
@@ -309,6 +315,25 @@ export default function EditProductPage({ params }: any) {
     } catch (e: any) { setError(e.message); } finally { setUploading(false); }
   };
 
+  // Handle price input with formatting
+  const handlePriceChange = (value: string) => {
+    // Remove all non-digit characters
+    const numericValue = value.replace(/\D/g, '');
+    
+    if (numericValue === '') {
+      setPrice('');
+      setPriceDisplay('');
+      return;
+    }
+    
+    // Store raw numeric value
+    setPrice(numericValue);
+    
+    // Format for display
+    const formatted = Number(numericValue).toLocaleString('vi-VN');
+    setPriceDisplay(formatted);
+  };
+
   const refetchProduct = async () => {
     const res = await fetch(`/api/admin/products/${productId}`);
     if (res.ok) {
@@ -334,10 +359,16 @@ export default function EditProductPage({ params }: any) {
             absoluteImageUrl = window.location.origin + imageUrl;
           }
         }
+        // Convert price to cents: price is already in VND, multiply by 100
+        const priceInVnd = Number(price);
+        const priceCents = Math.round(priceInVnd * 100);
+        
+        console.log('DEBUG Price conversion:', { inputPrice: price, priceInVnd, priceCents });
+        
         const body: Record<string, any> = {
           name: name.trim(),
           slug: slug.trim() || undefined,
-          priceCents: Math.round(Number(price) * 100),
+          priceCents,
           stock: Number(stock),
           categoryId,
           featured,
@@ -544,9 +575,22 @@ export default function EditProductPage({ params }: any) {
             <input className="w-full border rounded px-3 py-2 text-sm" value={slug} onChange={e=>setSlug(e.target.value)} placeholder="tu-dong-neu-de-trong" />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Giá (VND)</label>
-            <input className="w-full border rounded px-3 py-2 text-sm" value={price} onChange={e=>setPrice(e.target.value)} />
+            <label className="block text-sm font-medium mb-1">
+              Giá (VND)
+              <span className="ml-2 text-xs text-gray-500">
+                {priceDisplay && `≈ ${priceDisplay}₫`}
+              </span>
+            </label>
+            <input 
+              className="w-full border rounded px-3 py-2 text-sm font-mono" 
+              value={priceDisplay || price} 
+              onChange={e => handlePriceChange(e.target.value)} 
+              placeholder="Ví dụ: 1200000 hoặc 1,200,000" 
+            />
             {fieldErrors.price && <div className="text-xs text-red-600 mt-1">{fieldErrors.price}</div>}
+            <div className="text-xs text-gray-500 mt-1">
+              💡 Nhập giá theo VND (ví dụ: 1200000 cho 1.2 triệu đồng)
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Tồn kho</label>

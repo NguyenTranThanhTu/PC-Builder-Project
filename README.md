@@ -112,7 +112,7 @@ Product status lifecycle: `DRAFT | PUBLISHED | ARCHIVED` via enum `ProductStatus
 `src/lib/revalidate.ts` provides async helpers:
 
 - `revalidateProductListing()` revalidates listing pages (`/shop-with-sidebar`, `/shop-without-sidebar`, `/`).
-- `revalidateProductDetail(slug)` revalidates product detail `/shop-details/[slug]`.
+- `revalidateProductDetail(slug)` revalidates product detail `/shop/[slug]`.
 - `revalidateAfterProductChange(slug?)` combines both; called after create/update/archive.
 
 ### Optimistic Concurrency (PATCH Product)

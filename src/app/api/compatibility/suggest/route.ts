@@ -20,7 +20,10 @@ export async function POST(req: Request) {
     const { productIds, maxPerCategory } = parse.data;
 
     const selectedProducts = await prisma.product.findMany({
-      where: { id: { in: productIds } },
+      where: { 
+        id: { in: productIds },
+        status: "PUBLISHED"
+      },
       include: { category: true },
     });
 

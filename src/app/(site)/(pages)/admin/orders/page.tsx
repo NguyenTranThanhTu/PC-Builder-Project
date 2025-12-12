@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { FaCheckCircle, FaTruck, FaTimesCircle } from "react-icons/fa";
 import { Tooltip } from "@/components/Common/Tooltip";
+import { formatVndFromCents } from "@/lib/formatVnd";
 
 function OrderDetailModal({ order, onClose }: { order: any, onClose: () => void }) {
   if (!order) return null;
@@ -27,7 +28,7 @@ function OrderDetailModal({ order, onClose }: { order: any, onClose: () => void 
             <span className="font-semibold text-red">Lý do hủy:</span> <span className="text-red-600">{order.cancelReason}</span>
           </div>
         )}
-        {order.subtotalCents > 0 && <div className="mb-2"><span className="font-semibold">Tạm tính:</span> {(order.subtotalCents/100).toLocaleString()}₫</div>}
+        {order.subtotalCents > 0 && <div className="mb-2"><span className="font-semibold">Tạm tính:</span> {formatVndFromCents(order.subtotalCents)}</div>}
         {order.couponCode && order.couponDiscount > 0 && (
           <div className="mb-2 text-green">
             <span className="font-semibold">Mã giảm giá ({order.couponCode}):</span> <span className="font-bold">-{(order.couponDiscount/100).toLocaleString()}₫</span>
@@ -35,10 +36,10 @@ function OrderDetailModal({ order, onClose }: { order: any, onClose: () => void 
         )}
         {order.vipDiscount > 0 && (
           <div className="mb-2 text-blue">
-            <span className="font-semibold">Giảm giá VIP:</span> <span className="font-bold">-{(order.vipDiscount/100).toLocaleString()}₫</span>
+            <span className="font-semibold">Giảm giá VIP:</span> <span className="font-bold">-{formatVndFromCents(order.vipDiscount)}</span>
           </div>
         )}
-        <div className="mb-2"><span className="font-semibold">Tổng cộng:</span> <span className="text-blue font-bold text-lg">{order.totalCents ? (order.totalCents/100).toLocaleString() : "0"}₫</span></div>
+        <div className="mb-2"><span className="font-semibold">Tổng cộng:</span> <span className="text-blue font-bold text-lg">{order.totalCents ? formatVndFromCents(order.totalCents) : "0₫"}</span></div>
         <div className="mb-2"><span className="font-semibold">Ngày tạo:</span> {order.createdAt ? new Date(order.createdAt).toLocaleString() : "-"}</div>
         <div className="mb-2"><span className="font-semibold">Ghi chú:</span> {order.note || "-"}</div>
         <div className="mt-4">
@@ -210,7 +211,7 @@ export default function AdminOrdersPage() {
                     {order.customerName || order.user?.name || order.customerEmail || "-"}
                   </td>
                   <td className="px-3 py-2 border font-semibold text-green-700">
-                    {order.totalCents ? (order.totalCents / 100).toLocaleString() : "0"}₫
+                    {formatVndFromCents(order.totalCents || 0)}
                   </td>
                   <td
                     className={`px-3 py-2 border font-semibold rounded flex items-center gap-1 ${

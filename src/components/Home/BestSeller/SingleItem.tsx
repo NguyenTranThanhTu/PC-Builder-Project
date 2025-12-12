@@ -82,7 +82,7 @@ const SingleItem = ({ item }: { item: Product }) => {
           </div>
 
           <h3 className="font-medium text-dark ease-out duration-200 hover:text-blue mb-1.5">
-            <Link href={item?.productSlug ? `/shop/${item.productSlug}` : "/shop-details"}> {item.title} </Link>
+            <Link href={item?.productSlug ? `/shop/${item.productSlug}` : "/shop"}> {item.title} </Link>
           </h3>
 
           <span className="flex items-center justify-center gap-2 font-medium text-lg">

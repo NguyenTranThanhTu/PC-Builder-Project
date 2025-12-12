@@ -56,7 +56,17 @@ export async function PUT(req: Request, context: { params: { id: string } }) {
         },
       });
     }
-    return NextResponse.json({ success: true, order });
+    
+    // Convert BigInt to Number for JSON serialization
+    const serializedOrder = {
+      ...order,
+      user: order.user ? {
+        ...order.user,
+        totalSpent: Number(order.user.totalSpent)
+      } : null
+    };
+    
+    return NextResponse.json({ success: true, order: serializedOrder });
   } catch (err) {
     console.error("Update order status error", err);
     return NextResponse.json({ error: "Cập nhật trạng thái thất bại" }, { status: 500 });

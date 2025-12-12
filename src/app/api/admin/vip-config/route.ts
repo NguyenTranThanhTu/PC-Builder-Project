@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       tiers: tiers.map((tier) => ({
         ...tier,
+        minSpend: Number(tier.minSpend),
         userCount:
           tierCounts.find((tc) => tc.tier === tier.tier)?.userCount || 0,
       })),
@@ -84,7 +85,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ config });
+    return NextResponse.json({ 
+      config: {
+        ...config,
+        minSpend: Number(config.minSpend)
+      }
+    });
   } catch (error) {
     console.error("[VIP_CONFIG_POST]", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { formatVnd } from "@/lib/formatVnd";
+import { formatVnd, formatVndFromCents } from "@/lib/formatVnd";
 
 interface UserDetail {
   id: string;
@@ -14,6 +14,9 @@ interface UserDetail {
   vipTier: number;
   totalSpent: number;
   lastTierUpdate?: string;
+  isBanned: boolean;
+  banReason?: string | null;
+  bannedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   orders: any[];
@@ -47,6 +50,8 @@ export default function UserDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [showBanModal, setShowBanModal] = useState(false);
+  const [banReason, setBanReason] = useState("");
 
   useEffect(() => {
     fetchUserDetail();
@@ -91,6 +96,67 @@ export default function UserDetailPage() {
       }
 
       alert("Cập nhật vai trò thành công!");
+      fetchUserDetail();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleBanUser = async () => {
+    if (!banReason.trim()) {
+      alert("Vui lòng nhập lý do chặn tài khoản");
+      return;
+    }
+
+    if (!confirm(`Xác nhận CHẶN tài khoản ${user?.name || user?.email}?`)) {
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/ban`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: banReason }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to ban user");
+      }
+
+      alert("Đã chặn tài khoản thành công!");
+      setShowBanModal(false);
+      setBanReason("");
+      fetchUserDetail();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUnbanUser = async () => {
+    if (!confirm(`Xác nhận MỞ KHÓA tài khoản ${user?.name || user?.email}?`)) {
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/ban`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to unban user");
+      }
+
+      alert("Đã mở khóa tài khoản thành công!");
       fetchUserDetail();
     } catch (err: any) {
       alert(err.message);
@@ -210,6 +276,25 @@ export default function UserDetailPage() {
                     <span className="font-mono text-xs font-medium text-dark-2">{user.id.slice(0, 12)}...</span>
                   </div>
                 </div>
+
+                {/* Ban Status Alert */}
+                {user.isBanned && (
+                  <div className="w-full mt-4 p-3 bg-red-light-5 border-l-4 border-red rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-red flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="font-bold text-red-dark text-sm mb-1">🚫 Tài khoản bị chặn</p>
+                        {user.bannedAt && (
+                          <p className="text-xs text-dark-3">
+                            {new Date(user.bannedAt).toLocaleDateString("vi-VN")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -257,6 +342,51 @@ export default function UserDetailPage() {
               </div>
             </div>
 
+            {/* Ban/Unban Management */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-3 p-6">
+              <h3 className="text-lg font-bold text-dark mb-4">Quản lý trạng thái</h3>
+              
+              {user.isBanned ? (
+                <div>
+                  {/* Show Ban Reason */}
+                  {user.banReason && (
+                    <div className="mb-4 p-4 bg-red-light-6 border border-red-light-4 rounded-lg">
+                      <p className="text-xs font-semibold text-dark-3 mb-2">Lý do chặn:</p>
+                      <p className="text-sm text-dark-2">{user.banReason}</p>
+                    </div>
+                  )}
+
+                  {/* Unban Button */}
+                  <button
+                    onClick={handleUnbanUser}
+                    disabled={actionLoading}
+                    className="w-full px-4 py-3 bg-green hover:bg-green-dark text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                    </svg>
+                    <span>{actionLoading ? "Đang xử lý..." : "Mở khóa tài khoản"}</span>
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm text-dark-3 mb-4">
+                    Chặn tài khoản sẽ ngăn người dùng đăng nhập vào hệ thống.
+                  </p>
+                  <button
+                    onClick={() => setShowBanModal(true)}
+                    disabled={actionLoading}
+                    className="w-full px-4 py-3 bg-red hover:bg-red-dark text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                    </svg>
+                    <span>Chặn tài khoản</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* VIP Tier Info */}
             {vipTierInfo && (
               <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl shadow-sm border border-yellow-200 p-6">
@@ -271,7 +401,7 @@ export default function UserDetailPage() {
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium text-dark-3">Chi tiêu tối thiểu:</span>
-                    <span className="font-bold text-dark">{formatVnd(vipTierInfo.minSpend)}</span>
+                    <span className="font-bold text-dark">{formatVndFromCents(vipTierInfo.minSpend)}</span>
                   </div>
                 </div>
 
@@ -287,7 +417,7 @@ export default function UserDetailPage() {
                       ></div>
                     </div>
                     <p className="text-xs font-medium text-dark-2">
-                      Còn <span className="font-bold text-dark">{formatVnd(nextVipTier.minSpend - stats.totalSpent)}</span> nữa
+                      Còn <span className="font-bold text-dark">{formatVndFromCents(nextVipTier.minSpend - stats.totalSpent)}</span> nữa
                     </p>
                   </div>
                 )}
@@ -337,7 +467,7 @@ export default function UserDetailPage() {
                     </div>
                     <div>
                       <p className="text-xs text-dark-5">Chi tiêu</p>
-                      <p className="text-lg font-bold text-dark">{formatVnd(stats.totalSpent)}</p>
+                      <p className="text-lg font-bold text-dark">{formatVndFromCents(stats.totalSpent)}</p>
                     </div>
                   </div>
                 </div>
@@ -378,7 +508,7 @@ export default function UserDetailPage() {
                         <p className="text-xs text-dark-5">{new Date(order.createdAt).toLocaleDateString("vi-VN")}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold text-dark">{formatVnd(order.totalCents)}</p>
+                        <p className="text-sm font-bold text-dark">{formatVndFromCents(order.totalCents)}</p>
                         <span className={`text-xs px-2 py-0.5 rounded ${
                           order.status === "COMPLETED" ? "bg-green-100 text-green-700" :
                           order.status === "CANCELLED" ? "bg-red-100 text-red-700" :
@@ -430,6 +560,63 @@ export default function UserDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Ban User Modal */}
+      {showBanModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-3 max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-light-5 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-dark">Chặn tài khoản</h3>
+                <p className="text-sm text-dark-3">
+                  {user?.name || user?.email}
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-dark mb-2">
+                Lý do chặn <span className="text-red">*</span>
+              </label>
+              <textarea
+                value={banReason}
+                onChange={(e) => setBanReason(e.target.value)}
+                placeholder="VD: Spam đơn hàng, Thông tin sai sự thật, Vi phạm điều khoản..."
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-3 rounded-lg text-sm text-dark focus:outline-none focus:ring-2 focus:ring-red/20 focus:border-red resize-none"
+              />
+              <p className="text-xs text-dark-3 mt-2">
+                💡 Lý do này sẽ hiển thị cho người dùng khi họ đăng nhập
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowBanModal(false);
+                  setBanReason("");
+                }}
+                disabled={actionLoading}
+                className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-dark rounded-lg font-medium transition-colors disabled:opacity-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleBanUser}
+                disabled={actionLoading || !banReason.trim()}
+                className="flex-1 px-4 py-3 bg-red hover:bg-red-dark text-white rounded-lg font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {actionLoading ? "Đang xử lý..." : "Xác nhận chặn"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

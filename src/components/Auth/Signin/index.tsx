@@ -8,6 +8,7 @@ const Signin = () => {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [bannedReason, setBannedReason] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -16,6 +17,7 @@ const Signin = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setBannedReason("");
     setLoading(true);
     const res = await signIn("credentials", {
       redirect: false,
@@ -23,7 +25,13 @@ const Signin = () => {
       password: form.password,
     });
     if (res?.error) {
-      setError("Sai email hoặc mật khẩu.");
+      // Check if error is about banned account
+      if (res.error.startsWith("BANNED:")) {
+        const reason = res.error.replace("BANNED:", "");
+        setBannedReason(reason);
+      } else {
+        setError("Sai email hoặc mật khẩu.");
+      }
     } else {
       window.location.href = "/";
     }
@@ -42,7 +50,44 @@ const Signin = () => {
               </h2>
               <p>Nhập thông tin bên dưới</p>
             </div>
-            {error && <div className="text-red-500 text-center mb-4">{error}</div>}
+            
+            {/* Error Messages */}
+            {error && (
+              <div className="mb-6 p-4 bg-red-light-5 border-l-4 border-red rounded-lg">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-red flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm text-red-dark font-medium">{error}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Banned Account Alert */}
+            {bannedReason && (
+              <div className="mb-6 p-5 bg-red-light-5 border-2 border-red rounded-xl">
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-10 h-10 bg-red-light-4 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="w-6 h-6 text-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-red-dark text-base mb-1">🚫 Tài khoản đã bị khóa</h3>
+                    <p className="text-sm text-dark-2 mb-3">
+                      Tài khoản của bạn đã bị quản trị viên khóa vì lý do sau:
+                    </p>
+                    <div className="p-3 bg-white rounded-lg border border-red-light-3">
+                      <p className="text-sm font-medium text-dark">{bannedReason}</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-dark-3 mt-3">
+                  💡 Nếu bạn cho rằng đây là nhầm lẫn, vui lòng liên hệ với bộ phận hỗ trợ để được giải quyết.
+                </p>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit}>
               <div className="mb-5">
                 <label htmlFor="email" className="block mb-2.5">

@@ -80,8 +80,13 @@ model User {
   role           Role           @default(USER)
   // VIP Tier System
   vipTier        Int            @default(0) // 0=Normal, 1=VIP1, 2=VIP2, 3=VIP3
-  totalSpent     Int            @default(0) // Tổng tiền đã mua (cents)
+  totalSpent     BigInt         @default(0) // Tổng tiền đã mua (cents)
   lastTierUpdate DateTime?      @default(now())
+  // Ban System
+  isBanned       Boolean        @default(false) // Tài khoản bị chặn
+  banReason      String?        @db.Text // Lý do chặn
+  bannedAt       DateTime? // Thời điểm bị chặn
+  bannedBy       String? // Admin ID người thực hiện chặn
   accounts       Account[]
   sessions       Session[]
   orders         Order[]
@@ -89,6 +94,8 @@ model User {
   notifications  Notification[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+
+  @@index([isBanned])
 }
 
 model Account {
@@ -269,20 +276,36 @@ model OrderItem {
 }
 
 model Review {
-  id        String   @id @default(cuid())
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
-  productId String
-  product   Product  @relation(fields: [productId], references: [id])
-  rating    Int // 1..5
-  content   String
-  approved  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  // ...existing code...
+  id               String       @id @default(cuid())
+  userId           String?
+  user             User?        @relation(fields: [userId], references: [id])
+  productId        String
+  product          Product      @relation(fields: [productId], references: [id])
+  rating           Int // 1..5
+  content          String       @db.Text
+  verifiedPurchase Boolean      @default(false) // Đã mua sản phẩm
+  helpfulCount     Int          @default(0) // Số lượt bấm "Hữu ích"
+  images           String[] // URLs của ảnh đính kèm
+  adminReply       String?      @db.Text // Admin trả lời
+  adminReplyAt     DateTime? // Thời điểm admin trả lời
+  adminReplyBy     String? // Admin ID người trả lời
+  status           ReviewStatus @default(PENDING) // Trạng thái kiểm duyệt
+  rejectionReason  String? // Lý do từ chối (nếu có)
+  approved         Boolean      @default(true) // Deprecated - dùng status thay thế
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
   @@index([productId])
   @@index([userId])
   @@index([createdAt])
+  @@index([rating])
+  @@index([status])
+}
+
+enum ReviewStatus {
+  PENDING   // Chờ kiểm duyệt
+  APPROVED  // Đã duyệt - hiển thị công khai
+  REJECTED  // Từ chối - không hiển thị
 }
 
 // Coupon/Promo Code System
@@ -329,7 +352,7 @@ model VIPTierConfig {
   id              String   @id @default(cuid())
   tier            Int      @unique // 1, 2, 3
   name            String // "VIP Đồng", "VIP Bạc", "VIP Vàng"
-  minSpend        Int // Mua tối thiểu để lên tier (cents)
+  minSpend        BigInt // Mua tối thiểu để lên tier (cents)
   discountPercent Int // Discount % (3, 4, 5)
   badgeColor      String // Màu badge: "#CD7F32", "#C0C0C0", "#FFD700"
   createdAt       DateTime @default(now())
