@@ -11,10 +11,13 @@ type ProductItem = {
   slug: string;
   priceCents: number;
   stock: number;
-  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  status: "DRAFT" | "PUBLISHED" | "OUT_OF_STOCK" | "DISCONTINUED" | "ARCHIVED";
   featured: boolean;
   updatedAt: string;
   category?: { id: string; name: string; slug: string } | null;
+  brand?: string | null;
+  manufacturer?: string | null;
+  warranty?: string | null;
 };
 type Pagination = { page: number; pageSize: number; total: number; pageCount: number };
 
@@ -29,6 +32,7 @@ export default function ProductsManager() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<string>("");
   const [categoryId, setCategoryId] = useState<string>("");
+  const [brand, setBrand] = useState<string>("");
   const [featured, setFeatured] = useState<boolean | "">("");
   const [page, setPage] = useState(1);
 
@@ -37,7 +41,7 @@ export default function ProductsManager() {
     total: pagination?.total || 0,
     published: items.filter(p => p.status === 'PUBLISHED').length,
     draft: items.filter(p => p.status === 'DRAFT').length,
-    outOfStock: items.filter(p => p.stock === 0).length,
+    outOfStock: items.filter(p => p.status === 'OUT_OF_STOCK' || p.stock === 0).length,
   };
 
   const fetchCategories = useCallback(async () => {
@@ -58,6 +62,7 @@ export default function ProductsManager() {
       if (q.trim()) params.set("q", q.trim());
       if (status) params.set("status", status);
       if (categoryId) params.set("categoryId", categoryId);
+      if (brand) params.set("brand", brand);
       if (featured !== "") params.set("featured", String(featured));
       const res = await fetch(`/api/admin/products?${params.toString()}`);
       const data = await res.json();
@@ -73,6 +78,9 @@ export default function ProductsManager() {
 
   useEffect(() => { fetchCategories(); }, [fetchCategories]);
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+  // Get unique brands from current items for filter
+  const uniqueBrands = Array.from(new Set(items.map(p => p.brand).filter(Boolean))) as string[];
 
   // Actions
   const toggleArchive = async (p: ProductItem) => {
@@ -120,7 +128,7 @@ export default function ProductsManager() {
   };
 
   const resetFilters = () => {
-    setQ(""); setStatus(""); setCategoryId(""); setFeatured(""); setPage(1);
+    setQ(""); setStatus(""); setCategoryId(""); setBrand(""); setFeatured(""); setPage(1);
   };
 
   return (
@@ -212,7 +220,7 @@ export default function ProductsManager() {
           </svg>
           <h3 className="text-base font-semibold text-dark">Bộ lọc</h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
           <div className="lg:col-span-2">
             <input 
               value={q} 
@@ -227,9 +235,11 @@ export default function ProductsManager() {
             className="w-full border border-gray-3 rounded-lg px-4 py-2.5 text-sm focus:border-blue focus:ring-2 focus:ring-blue/20 outline-none transition-all"
           >
             <option value="">Tất cả trạng thái</option>
-            <option value="DRAFT">Bản nháp</option>
-            <option value="PUBLISHED">Đang hiển thị</option>
-            <option value="ARCHIVED">Đã lưu trữ</option>
+            <option value="DRAFT">📝 Bản nháp</option>
+            <option value="PUBLISHED">✅ Đang hiển thị</option>
+            <option value="OUT_OF_STOCK">📦 Hết hàng</option>
+            <option value="DISCONTINUED">🚫 Ngừng kinh doanh</option>
+            <option value="ARCHIVED">🗄️ Đã lưu trữ</option>
           </select>
           <select 
             value={categoryId} 
@@ -238,6 +248,14 @@ export default function ProductsManager() {
           >
             <option value="">Tất cả danh mục</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select 
+            value={brand} 
+            onChange={e=>{setBrand(e.target.value); setPage(1);}} 
+            className="w-full border border-gray-3 rounded-lg px-4 py-2.5 text-sm focus:border-blue focus:ring-2 focus:ring-blue/20 outline-none transition-all"
+          >
+            <option value="">Tất cả thương hiệu</option>
+            {uniqueBrands.map(b => <option key={b} value={b}>{b}</option>)}
           </select>
           <select 
             value={featured === "" ? "" : (featured ? "1" : "0")} 
@@ -304,8 +322,10 @@ export default function ProductsManager() {
               <thead className="bg-gray-1">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-dark uppercase tracking-wider">Sản phẩm</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-dark uppercase tracking-wider">Thương hiệu</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-dark uppercase tracking-wider">Danh mục</th>
                   <th className="px-6 py-4 text-right text-xs font-semibold text-dark uppercase tracking-wider">Giá bán</th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-dark uppercase tracking-wider">Bảo hành</th>
                   <th className="px-6 py-4 text-center text-xs font-semibold text-dark uppercase tracking-wider">Tồn kho</th>
                   <th className="px-6 py-4 text-center text-xs font-semibold text-dark uppercase tracking-wider">Trạng thái</th>
                   <th className="px-6 py-4 text-center text-xs font-semibold text-dark uppercase tracking-wider">Trang chủ</th>
@@ -327,12 +347,35 @@ export default function ProductsManager() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
+                        <div className="max-w-[140px]">
+                          {p.brand ? (
+                            <>
+                              <div className="text-sm font-semibold text-dark truncate">{p.brand}</div>
+                              {p.manufacturer && (
+                                <div className="text-xs text-dark-5 truncate">{p.manufacturer}</div>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-dark-5 text-sm">—</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
                         <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-blue-light-5 text-blue text-xs font-medium">
                           {p.category?.name || "Chưa phân loại"}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <span className="text-sm font-semibold text-dark">{formatVnd(p.priceCents / 100)}</span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {p.warranty ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-purple-light-4 text-purple text-xs font-medium">
+                            🛡️ {p.warranty}
+                          </span>
+                        ) : (
+                          <span className="text-dark-5 text-sm">—</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-center">
                         <div className="inline-flex items-center gap-2">
@@ -352,10 +395,14 @@ export default function ProductsManager() {
                             p.status === 'PUBLISHED' 
                               ? 'bg-green-light-6 text-green' 
                               : p.status === 'DRAFT' 
-                              ? 'bg-yellow-light-2 text-yellow-dark' 
+                              ? 'bg-yellow-light-2 text-yellow-dark'
+                              : p.status === 'OUT_OF_STOCK'
+                              ? 'bg-orange-light-2 text-orange-dark'
+                              : p.status === 'DISCONTINUED'
+                              ? 'bg-red-light-6 text-red' 
                               : 'bg-gray-2 text-dark-5'
                           }`}>
-                            {p.status === 'DRAFT' ? "Nháp" : p.status === 'PUBLISHED' ? "Hiển thị" : "Lưu trữ"}
+                            {p.status === 'DRAFT' ? "📝 Nháp" : p.status === 'PUBLISHED' ? "✅ Hiển thị" : p.status === 'OUT_OF_STOCK' ? "📦 Hết hàng" : p.status === 'DISCONTINUED' ? "🚫 Ngừng" : "🗄️ Lưu trữ"}
                           </span>
                           <Tooltip
                             content={
@@ -363,6 +410,10 @@ export default function ProductsManager() {
                                 ? 'Hiển thị: Sản phẩm đang công bố cho khách hàng.'
                                 : p.status === 'DRAFT'
                                 ? 'Nháp: Chỉ nội bộ admin, chưa hiển thị.'
+                                : p.status === 'OUT_OF_STOCK'
+                                ? 'Hết hàng: Tạm thời không còn hàng, sẽ nhập lại.'
+                                : p.status === 'DISCONTINUED'
+                                ? 'Ngừng kinh doanh: Không sản xuất/bán nữa.'
                                 : 'Lưu trữ: Ẩn khỏi danh sách & tìm kiếm, giữ lại dữ liệu.'
                             }
                             side="top"

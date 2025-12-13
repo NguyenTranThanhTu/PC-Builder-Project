@@ -48,6 +48,7 @@ export default async function ProductDetailsPage({ params }: PageProps) {
         } 
       },
       reviews: {
+        where: { status: "APPROVED" }, // Chỉ hiển thị đánh giá đã duyệt
         include: {
           user: {
             select: {
@@ -101,10 +102,8 @@ export default async function ProductDetailsPage({ params }: PageProps) {
     verifiedPurchase: r.verifiedPurchase,
     helpfulCount: r.helpfulCount,
     images: r.images || [],
-    adminReply: r.adminReply ? {
-      content: r.adminReply,
-      createdAt: r.adminReplyAt?.toISOString() || new Date().toISOString(),
-    } : null,
+    adminReply: r.adminReply || null,
+    adminReplyAt: r.adminReplyAt?.toISOString() || null,
   }));
 
   // Fetch related products

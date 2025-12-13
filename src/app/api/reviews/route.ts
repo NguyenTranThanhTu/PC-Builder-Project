@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
         images,
         verifiedPurchase,
         helpfulCount: 0,
-        approved: true,
+        status: "PENDING", // Review mới cần kiểm duyệt
       },
       include: {
         user: {

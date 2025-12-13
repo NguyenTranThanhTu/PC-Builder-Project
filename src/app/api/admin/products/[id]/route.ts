@@ -76,6 +76,13 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         updateData.status = data.status as ProductStatus;
         updateData.archivedAt = data.status === "ARCHIVED" ? new Date() : null;
       }
+      // New fields from schema
+      if (data.brand !== undefined) updateData.brand = data.brand ?? null;
+      if (data.manufacturer !== undefined) updateData.manufacturer = data.manufacturer ?? null;
+      if (data.modelNumber !== undefined) updateData.modelNumber = data.modelNumber ?? null;
+      if (data.warranty !== undefined) updateData.warranty = data.warranty ?? null;
+      if (data.metaTitle !== undefined) updateData.metaTitle = data.metaTitle ?? null;
+      if (data.metaDescription !== undefined) updateData.metaDescription = data.metaDescription ?? null;
 
       if (data.name) {
         let baseSlug = slugify(data.slug || data.name);
@@ -139,6 +146,11 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     }
     return NextResponse.json({ error: e?.message || "Failed to update" }, { status: 500 });
   }
+}
+
+// Alias PUT → PATCH for compatibility
+export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  return PATCH(req, context);
 }
 
 export async function DELETE(_req: NextRequest, context: { params: Promise<{ id: string }> }) {

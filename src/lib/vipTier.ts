@@ -38,3 +38,15 @@ export async function checkAndUpgradeVIPTier(userId: string) {
 
   return { upgraded: false, tier: user.vipTier };
 }
+
+// Get VIP tier info based on total spent
+export function getVipTier(totalSpent: number): { tier: number; discount: number } {
+  if (totalSpent >= 30000000) {
+    return { tier: 3, discount: 15 }; // Vàng
+  } else if (totalSpent >= 10000000) {
+    return { tier: 2, discount: 10 }; // Bạc
+  } else if (totalSpent >= 5000000) {
+    return { tier: 1, discount: 5 }; // Đồng
+  }
+  return { tier: 0, discount: 0 }; // Thường
+}

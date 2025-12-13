@@ -93,6 +93,52 @@ function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) 
 function randFloat(min, max, decimals = 2) { return parseFloat((Math.random() * (max - min) + min).toFixed(decimals)); }
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
+function getBrandManufacturer(categorySlug) {
+  const brandData = {
+    cpu: [
+      { brand: 'Intel', manufacturer: pick(['Intel', 'Intel Boxed', 'Intel Tray']) },
+      { brand: 'AMD', manufacturer: pick(['AMD', 'AMD Boxed']) }
+    ],
+    gpu: [
+      { brand: 'NVIDIA', manufacturer: pick(['ASUS ROG', 'MSI Gaming', 'GIGABYTE AORUS', 'EVGA']) },
+      { brand: 'AMD', manufacturer: pick(['ASUS TUF', 'MSI Mech', 'GIGABYTE Gaming', 'XFX']) }
+    ],
+    mainboard: [
+      { brand: 'ASUS', manufacturer: pick(['ASUS ROG', 'ASUS TUF', 'ASUS Prime']) },
+      { brand: 'MSI', manufacturer: pick(['MSI MPG', 'MSI MAG', 'MSI Pro']) },
+      { brand: 'GIGABYTE', manufacturer: pick(['GIGABYTE AORUS', 'GIGABYTE Gaming']) }
+    ],
+    ram: [
+      { brand: 'Corsair', manufacturer: 'Corsair' },
+      { brand: 'G.Skill', manufacturer: 'G.Skill' },
+      { brand: 'Kingston', manufacturer: 'Kingston' }
+    ],
+    psu: [
+      { brand: 'Corsair', manufacturer: 'Corsair' },
+      { brand: 'Seasonic', manufacturer: 'Seasonic' },
+      { brand: 'Cooler Master', manufacturer: 'Cooler Master' }
+    ],
+    case: [
+      { brand: 'LianLi', manufacturer: 'LianLi' },
+      { brand: 'NZXT', manufacturer: 'NZXT' },
+      { brand: 'Corsair', manufacturer: 'Corsair' }
+    ],
+    storage: [
+      { brand: 'Samsung', manufacturer: 'Samsung' },
+      { brand: 'WD', manufacturer: 'Western Digital' },
+      { brand: 'Seagate', manufacturer: 'Seagate' }
+    ],
+    cooler: [
+      { brand: 'Noctua', manufacturer: 'Noctua' },
+      { brand: 'Deepcool', manufacturer: 'Deepcool' },
+      { brand: 'NZXT', manufacturer: 'NZXT' }
+    ]
+  };
+  
+  const options = brandData[categorySlug] || [{ brand: 'Generic', manufacturer: 'Generic' }];
+  return pick(options);
+}
+
 async function main() {
   const categories = await prisma.category.findMany();
   if (!categories.length) {
@@ -120,6 +166,11 @@ async function main() {
 
       const description = `Sản phẩm ${category.slug} hiệu năng cao dành cho người dùng yêu cầu ổn định.`;
 
+      // Generate brand/manufacturer based on category
+      const { brand, manufacturer } = getBrandManufacturer(category.slug);
+      const modelNumber = `${brand.toUpperCase().replace(/\s/g, '')}-${randInt(1000, 9999)}`;
+      const warranty = pick(['12 tháng', '24 tháng', '36 tháng']);
+
       await prisma.product.create({
         data: {
           name: baseName,
@@ -130,6 +181,12 @@ async function main() {
           imageUrl,
           featured,
           status,
+          brand,
+          manufacturer,
+          modelNumber,
+          warranty,
+          metaTitle: `${baseName} - Chính hãng giá tốt`,
+          metaDescription: `Mua ${baseName} chính hãng với ${warranty} bảo hành, giá tốt nhất thị trường.`,
           categoryId: category.id,
           attributes: {
             create: attributeEntries.map(a => ({

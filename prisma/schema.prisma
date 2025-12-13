@@ -61,6 +61,8 @@ enum OrderStatus {
 enum ProductStatus {
   DRAFT
   PUBLISHED
+  OUT_OF_STOCK
+  DISCONTINUED
   ARCHIVED
 }
 
@@ -157,9 +159,29 @@ model Product {
   featured      Boolean            @default(false)
   status        ProductStatus      @default(DRAFT)
   archivedAt    DateTime?
+  
+  // Brand & Manufacturer info
+  brand         String?
+  manufacturer  String?
+  modelNumber   String?
+  
+  // Source tracking for re-scraping
+  sourceUrl     String?
+  lastScraped   DateTime?
+  
+  // SEO & Marketing
+  metaTitle       String?
+  metaDescription String?
+  warranty        String?
+  
+  // Product metrics
+  viewCount     Int                @default(0)
+  purchaseCount Int                @default(0)
+  
   categoryId    String
   category      Category           @relation(fields: [categoryId], references: [id])
   attributes    ProductAttribute[]
+  images        ProductImage[]
   orderItems    OrderItem[]
   reviews       Review[]
   createdAt     DateTime           @default(now())
@@ -170,6 +192,10 @@ model Product {
   @@index([createdAt])
   @@index([priceCents])
   @@index([status, categoryId, createdAt])
+  @@index([brand])
+  @@index([manufacturer])
+  @@index([viewCount])
+  @@index([purchaseCount])
 }
 
 model AttributeType {
@@ -198,6 +224,24 @@ model ProductAttribute {
   @@index([attributeTypeId])
   @@index([attributeTypeId, numberValue])
   @@index([attributeTypeId, stringValue])
+}
+
+// Product images - support multiple images per product
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  url       String
+  blurData  String?
+  altText   String?
+  order     Int      @default(0)
+  isPrimary Boolean  @default(false)
+  
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  
+  @@index([productId])
+  @@index([productId, order])
+  @@index([productId, isPrimary])
 }
 
 // Generic compatibility rule (attribute vs attribute or vs literal value)
@@ -293,7 +337,7 @@ model Review {
   rejectionReason  String? // Lý do từ chối (nếu có)
   approved         Boolean      @default(true) // Deprecated - dùng status thay thế
   createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  updatedAt        DateTime     @default(now()) @updatedAt
 
   @@index([productId])
   @@index([userId])

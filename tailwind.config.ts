@@ -5,7 +5,10 @@ const defaultTheme = require("tailwindcss/defaultTheme");
 const config: Config = {
   safelist: [
     'bg-green-100', 'text-green-700', 'hover:bg-green-200', 'border-green-300',
-    'bg-blue-100', 'text-blue-700', 'hover:bg-blue-200', 'border-blue-300'
+    'bg-blue-100', 'text-blue-700', 'hover:bg-blue-200', 'border-blue-300',
+    'bg-orange-100', 'text-orange-700', 'border-orange-300',
+    'bg-gray-200', 'text-gray-700', 'border-gray-400',
+    'bg-yellow-100', 'text-yellow-700', 'border-yellow-400',
   ],
   content: [
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
@@ -296,6 +299,7 @@ const config: Config = {
       },
       animation: {
         blob: "blob 7s infinite",
+        shimmer: "shimmer 2s infinite",
       },
       keyframes: {
         blob: {
@@ -310,6 +314,14 @@ const config: Config = {
           },
           "100%": {
             transform: "translate(0px, 0px) scale(1)",
+          },
+        },
+        shimmer: {
+          "0%": {
+            transform: "translateX(-100%)",
+          },
+          "100%": {
+            transform: "translateX(100%)",
           },
         },
       },

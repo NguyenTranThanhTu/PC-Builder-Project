@@ -2,8 +2,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { ATTRIBUTE_TEMPLATES as attributeTemplates } from "@/lib/attributeTemplates";
-import Tooltip from "@/components/Common/Tooltip";
 
 type Category = { id: string; name: string; slug: string };
 type AttrTemplate = { key: string; label: string; valueType: "STRING" | "NUMBER" };
@@ -18,21 +18,44 @@ interface ProductPayload {
   stock: number;
   categoryId: string;
   featured: boolean;
-  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  status: "DRAFT" | "PUBLISHED" | "OUT_OF_STOCK" | "DISCONTINUED" | "ARCHIVED";
   imageUrl: string | null;
   imageBlurData: string | null;
-  updatedAt: string; // ISO
+  brand: string | null;
+  manufacturer: string | null;
+  modelNumber: string | null;
+  warranty: string | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  updatedAt: string;
   category: { id: string; name: string; slug: string };
   attributes: { attributeType: { key: string; label?: string; valueType: "STRING" | "NUMBER" }; stringValue: string | null; numberValue: number | null; }[];
 }
 
-// Relax prop typing to align with Next.js generated PageProps in Next 15 (params may be a Promise internally)
+const BRAND_OPTIONS: Record<string, string[]> = {
+  cpu: ['Intel', 'AMD'],
+  gpu: ['NVIDIA', 'AMD'],
+  mainboard: ['ASUS', 'MSI', 'GIGABYTE', 'ASRock', 'Biostar'],
+  ram: ['Corsair', 'G.Skill', 'Kingston', 'Crucial', 'TeamGroup'],
+  psu: ['Corsair', 'Seasonic', 'EVGA', 'Cooler Master', 'Thermaltake'],
+  case: ['NZXT', 'Corsair', 'Lian Li', 'Fractal Design', 'Phanteks'],
+  storage: ['Samsung', 'WD', 'Seagate', 'Crucial', 'Kingston'],
+  cooler: ['Noctua', 'Cooler Master', 'be quiet!', 'NZXT', 'Deepcool']
+};
+
+const WARRANTY_OPTIONS = ['12 tháng', '24 tháng', '36 tháng', '60 tháng'];
+
 export default function EditProductPage({ params }: any) {
+  const router = useRouter();
   const { id: productId } = typeof params?.then === 'function' ? React.use(params) : params;
+  
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [product, setProduct] = useState<ProductPayload | null>(null);
+  const [categorySlug, setCategorySlug] = useState<string>("");
+  
+  // Form fields
   const [categoryId, setCategoryId] = useState<string>("");
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -40,51 +63,36 @@ export default function EditProductPage({ params }: any) {
   const [priceDisplay, setPriceDisplay] = useState<string>("");
   const [stock, setStock] = useState<string>("0");
   const [featured, setFeatured] = useState(false);
-  const [status, setStatus] = useState<"DRAFT" | "PUBLISHED" | "ARCHIVED">("DRAFT");
+  const [status, setStatus] = useState<"DRAFT" | "PUBLISHED" | "OUT_OF_STOCK" | "DISCONTINUED" | "ARCHIVED">("DRAFT");
   const [description, setDescription] = useState("");
+  
+  // Brand & Product Info
+  const [brand, setBrand] = useState("");
+  const [customBrand, setCustomBrand] = useState("");
+  const [manufacturer, setManufacturer] = useState("");
+  const [modelNumber, setModelNumber] = useState("");
+  const [warranty, setWarranty] = useState("24 tháng");
+  
+  // Image
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageBlurData, setImageBlurData] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  
+  // Attributes
   const [attrTemplates, setAttrTemplates] = useState<AttrTemplate[]>([]);
   const [attributes, setAttributes] = useState<AttrInputState[]>([]);
-  const [updatedAt, setUpdatedAt] = useState<string | null>(null); // concurrency token
+  const [attrErrors, setAttrErrors] = useState<Record<string, string>>({});
+  
+  // UI State
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [conflict, setConflict] = useState<{ currentUpdatedAt?: string } | null>(null);
-  const [conflictRemote, setConflictRemote] = useState<ProductPayload | null>(null);
-  const [diffSelection, setDiffSelection] = useState<Record<string, 'local' | 'remote'>>({});
-  const [attributeDiffSelection, setAttributeDiffSelection] = useState<Record<string, 'local' | 'remote'>>({});
-  // Validate lỗi từng thuộc tính kỹ thuật
-  const [attrErrors, setAttrErrors] = useState<Record<string, string>>({});
   const [fieldErrors, setFieldErrors] = useState<{[k:string]:string}>({});
+  const [activeTab, setActiveTab] = useState<'basic' | 'specs'>('basic');
 
-  const computeDiff = (remote: ProductPayload) => {
-    const fieldKeys: { key: string; local: any; remote: any }[] = [
-      { key: 'name', local: name, remote: remote.name },
-      { key: 'slug', local: slug, remote: remote.slug },
-      { key: 'priceCents', local: Math.round(Number(price) * 100), remote: remote.priceCents },
-      { key: 'stock', local: Number(stock), remote: remote.stock },
-      { key: 'status', local: status, remote: remote.status },
-      { key: 'featured', local: featured, remote: remote.featured },
-      { key: 'description', local: description, remote: remote.description },
-      { key: 'categoryId', local: categoryId, remote: remote.categoryId },
-    ];
-    const selection: Record<string, 'local' | 'remote'> = {};
-    fieldKeys.forEach(f => { if (f.local !== f.remote) selection[f.key] = 'remote'; });
-    setDiffSelection(selection);
-    const attrSel: Record<string, 'local' | 'remote'> = {};
-    attrTemplates.forEach(t => {
-      const remoteAttr = remote.attributes.find(a => a.attributeType.key === t.key);
-      const localAttr = attributes.find(a => a.key === t.key);
-      const remoteVal = t.valueType === 'STRING' ? remoteAttr?.stringValue : remoteAttr?.numberValue;
-      const localVal = t.valueType === 'STRING' ? localAttr?.stringValue : localAttr?.numberValue;
-      if (localVal !== remoteVal) attrSel[t.key] = 'remote';
-    });
-    setAttributeDiffSelection(attrSel);
-  };
-
+  // Load categories and product
   useEffect(() => {
     const run = async () => {
       try {
@@ -92,35 +100,53 @@ export default function EditProductPage({ params }: any) {
           fetch("/api/admin/categories"),
           fetch(`/api/admin/products/${productId}`),
         ]);
+        
         if (catRes.ok) {
           const data = await catRes.json();
-            setCategories(data.categories || []);
+          setCategories(data.categories || []);
         }
+        
         if (prodRes.ok) {
           const pdata = await prodRes.json();
-          const p: ProductPayload = pdata.product;
+          const p = pdata.product as ProductPayload;
           setProduct(p);
-          setCategoryId(p.categoryId);
           setName(p.name);
           setSlug(p.slug);
-          
-          // Convert priceCents to VND and format
-          const priceInVnd = Math.round(p.priceCents / 100);
-          setPrice(priceInVnd.toString());
-          setPriceDisplay(priceInVnd.toLocaleString('vi-VN'));
-          
-          setStock(p.stock.toString());
+          setPrice(String(p.priceCents / 100));
+          setPriceDisplay(String(p.priceCents / 100));
+          setStock(String(p.stock));
           setFeatured(p.featured);
           setStatus(p.status);
           setDescription(p.description || "");
+          setCategoryId(p.categoryId);
+          setCategorySlug(p.category.slug);
           setImageUrl(p.imageUrl);
           setImageBlurData(p.imageBlurData);
+          setBrand(p.brand || "");
+          setCustomBrand(p.brand || "");
+          setManufacturer(p.manufacturer || "");
+          setModelNumber(p.modelNumber || "");
+          setWarranty(p.warranty || "24 tháng");
           setUpdatedAt(p.updatedAt);
-        } else {
-          setError("Không tìm thấy sản phẩm");
+          
+          // Load attributes
+          const cat = p.category;
+          const tmpl = attributeTemplates[cat.slug] || [];
+          setAttrTemplates(tmpl);
+          
+          const attrMap = new Map(p.attributes.map(a => [a.attributeType.key, a]));
+          setAttributes(tmpl.map(t => {
+            const existing = attrMap.get(t.key);
+            return {
+              key: t.key,
+              stringValue: t.valueType === 'STRING' ? (existing?.stringValue ?? "") : null,
+              numberValue: t.valueType === 'NUMBER' ? (existing?.numberValue ?? null) : null,
+            };
+          }));
         }
-      } catch (e: any) {
-        setError(e.message);
+      } catch (e) {
+        console.error(e);
+        setError("Không thể tải sản phẩm");
       } finally {
         setLoading(false);
       }
@@ -128,51 +154,38 @@ export default function EditProductPage({ params }: any) {
     run();
   }, [productId]);
 
+  // Update attributes when category changes
   useEffect(() => {
     const cat = categories.find(c => c.id === categoryId);
-    if (!cat) { setAttrTemplates([]); setAttributes([]); return; }
+    if (!cat) return;
+    
+    setCategorySlug(cat.slug);
     const tmpl = attributeTemplates[cat.slug] || [];
     setAttrTemplates(tmpl);
-    if (product) {
-      const mapped = tmpl.map(t => {
-        const found = product.attributes.find(a => a.attributeType.key === t.key);
-        return {
-          key: t.key,
-          stringValue: t.valueType === "STRING" ? (found?.stringValue ?? "") : null,
-          numberValue: t.valueType === "NUMBER" ? (found?.numberValue ?? 0) : null,
-        } as AttrInputState;
-      });
-      setAttributes(mapped);
-    } else {
-      setAttributes(tmpl.map(t => ({ key: t.key, stringValue: t.valueType === "STRING" ? "" : null, numberValue: t.valueType === "NUMBER" ? 0 : null })));
-    }
-  }, [categoryId, categories, product]);
+    
+    // Preserve existing attribute values if keys match
+    const currentAttrMap = new Map(attributes.map(a => [a.key, a]));
+    setAttributes(tmpl.map(t => {
+      const existing = currentAttrMap.get(t.key);
+      if (existing) return existing;
+      return {
+        key: t.key,
+        stringValue: t.valueType === 'STRING' ? "" : null,
+        numberValue: t.valueType === 'NUMBER' ? null : null,
+      };
+    }));
+  }, [categoryId, categories]);
 
-
-  // Advanced real-time validation for all technical fields (STRING & NUMBER)
   const onAttrChange = useCallback((key: string, value: string) => {
     setAttributes(prev => prev.map(a => {
       if (a.key !== key) return a;
       const template = attrTemplates.find(t => t.key === key);
       if (!template) return a;
+      
       let err = "";
       if (template.valueType === "STRING") {
-        // Use a safe regex for all targets (no unicode flag)
-        const validStr = /^[A-Za-z0-9 \-]+$/;
         if (value.trim() === "") err = "Không được để trống";
-        // Áp dụng cho tất cả trường STRING kỹ thuật (trừ các trường đặc biệt như PCIe Gen, Power Connector)
-        if (!['GPU_PCIE_GEN','GPU_POWER_CONNECTOR'].includes(key)) {
-          if (value.length > 50) err = "Tối đa 50 ký tự";
-          else if (/^\d+$/.test(value.trim())) err = "Không được chỉ toàn số";
-          else if (!validStr.test(value.trim())) err = "Không chứa ký tự đặc biệt";
-        }
-        if (key === "GPU_PCIE_GEN") {
-          const allowed = ["3.0", "4.0", "5.0", "2.0", "1.0"];
-          if (value && !allowed.includes(value.trim())) err = `Chỉ chấp nhận: ${allowed.join(", ")}`;
-        }
-        if (key === "GPU_POWER_CONNECTOR") {
-          if (value && !/^([0-9]+(\+)?)+-pin$/.test(value.trim())) err = "Định dạng ví dụ: 8-pin, 6+2-pin";
-        }
+        else if (value.length > 100) err = "Tối đa 100 ký tự";
         setAttrErrors(errors => ({ ...errors, [key]: err }));
         return { ...a, stringValue: value };
       } else {
@@ -180,554 +193,595 @@ export default function EditProductPage({ params }: any) {
         if (value.trim() === "") {
           err = "Không được để trống";
         } else if (!/^\d*\.?\d+$/.test(value.trim())) {
-          err = "Chỉ được nhập số thực dương, ví dụ: 4.80, 3.25, 2.5";
-        } else if (isNaN(numVal as number)) {
-          err = "Giá trị không hợp lệ";
-        } else {
-          // Validate đặc thù từng trường số kỹ thuật của mọi danh mục
-          if (key === "CPU_CORES" && numVal! > 128) err = "Số nhân CPU tối đa 128";
-          if (key === "CPU_THREADS" && numVal! > 256) err = "Số luồng CPU tối đa 256";
-          if (key === "CPU_BASE_CLOCK_GHZ" && numVal! > 10) err = "Xung cơ bản tối đa 10GHz";
-          if (key === "CPU_BOOST_CLOCK_GHZ" && numVal! > 10) err = "Xung boost tối đa 10GHz";
-          if (key === "CPU_TDP_WATT" && numVal! > 500) err = "TDP CPU tối đa 500W";
-          if (key === "CPU_MAX_MEMORY_SPEED_MHZ" && numVal! > 10000) err = "RAM tối đa 10,000MHz";
-          if (key === "MB_RAM_SLOTS" && numVal! > 16) err = "Số khe RAM tối đa 16";
-          if (key === "MB_MAX_RAM_GB" && numVal! > 2048) err = "RAM tối đa 2048GB";
-          if (key === "MB_MAX_RAM_SPEED_MHZ" && numVal! > 10000) err = "RAM tối đa 10,000MHz";
-          if (key === "MB_PCIEX16_SLOTS" && numVal! > 8) err = "PCIe x16 tối đa 8";
-          if (key === "MB_M2_SLOTS" && numVal! > 8) err = "Khe M.2 tối đa 8";
-          if (key === "MB_SATA_PORTS" && numVal! > 12) err = "Cổng SATA tối đa 12";
-          if (key === "GPU_VRAM_GB" && numVal! > 64) err = "VRAM quá lớn";
-          if (key === "GPU_LENGTH_MM" && numVal! > 600) err = "Chiều dài không hợp lệ";
-          if (key === "GPU_TDP_WATT" && numVal! > 1000) err = "TDP GPU tối đa 1000W";
-          if (key === "CASE_GPU_CLEARANCE_MM" && numVal! > 400) err = "Hở GPU tối đa 400mm";
-          if (key === "CASE_CPU_COOLER_CLEARANCE_MM" && numVal! > 300) err = "Hở tản CPU tối đa 300mm";
-          if (key === "RAM_CAPACITY_GB" && numVal! > 512) err = "Dung lượng RAM tối đa 512GB";
-          if (key === "RAM_SPEED_MHZ" && numVal! > 10000) err = "Tốc độ RAM tối đa 10,000MHz";
-          if (key === "RAM_MODULES" && numVal! > 16) err = "Số thanh RAM tối đa 16";
-          if (key === "RAM_CL" && numVal! > 50) err = "CL tối đa 50";
-          if (key === "PSU_WATTAGE" && numVal! > 2000) err = "Công suất PSU tối đa 2000W";
-          if (key === "STORAGE_CAPACITY_GB" && numVal! > 16384) err = "Dung lượng lưu trữ tối đa 16TB";
-          if (key === "COOLER_TDP_WATT" && numVal! > 1000) err = "Công suất tản tối đa 1000W";
-          if (key === "COOLER_MAX_HEIGHT_MM" && numVal! > 300) err = "Chiều cao tản tối đa 300mm";
-          if (numVal! <= 0) err = "Phải lớn hơn 0";
+          err = "Chỉ được nhập số dương";
+        } else if (isNaN(numVal as number) || (numVal as number) <= 0) {
+          err = "Phải lớn hơn 0";
         }
         setAttrErrors(errors => ({ ...errors, [key]: err }));
-        return { ...a, numberValue: isNaN(numVal as number) ? null : numVal };
+        return { ...a, numberValue: numVal };
       }
     }));
   }, [attrTemplates]);
 
-
-  const validateLocal = (): string | null => {
-    let hasError = false;
-    const newFieldErrors: {[k:string]:string} = {};
-    if (!name.trim()) { newFieldErrors.name = "Tên sản phẩm bắt buộc"; hasError = true; }
-    if (!categoryId) { newFieldErrors.categoryId = "Cần chọn danh mục"; hasError = true; }
-    const p = Number(price);
-    if (isNaN(p) || p < 0) { newFieldErrors.price = "Giá không hợp lệ"; hasError = true; }
-    else if (p > 2147483647) { newFieldErrors.price = "Giá quá lớn (tối đa 2,147,483,647)"; hasError = true; }
-    const s = Number(stock);
-    if (isNaN(s) || s < 0) { newFieldErrors.stock = "Tồn kho không hợp lệ"; hasError = true; }
-    else if (s > 2147483647) { newFieldErrors.stock = "Tồn kho quá lớn (tối đa 2,147,483,647)"; hasError = true; }
-    let hasAttrError = false;
-    attributes.forEach(a => {
-      const tmpl = attrTemplates.find(t => t.key === a.key);
-      if (!tmpl) return;
-      const value = tmpl.valueType === "STRING" ? (a.stringValue ?? "") : (a.numberValue?.toString() ?? "");
-      // Replicate the same validation as in onAttrChange
-      let err = "";
-      if (tmpl.valueType === "STRING") {
-        // Use a safe regex for all targets (no unicode flag)
-        const validStr = /^[A-Za-z0-9 \-]+$/;
-        if (value.trim() === "") err = "Không được để trống";
-        if (!['GPU_PCIE_GEN','GPU_POWER_CONNECTOR'].includes(a.key)) {
-          if (value.length > 50) err = "Tối đa 50 ký tự";
-          else if (/^\d+$/.test(value.trim())) err = "Không được chỉ toàn số";
-          else if (!validStr.test(value.trim())) err = "Không chứa ký tự đặc biệt";
-        }
-        if (a.key === "GPU_PCIE_GEN") {
-          const allowed = ["3.0", "4.0", "5.0", "2.0", "1.0"];
-          if (value && !allowed.includes(value.trim())) err = `Chỉ chấp nhận: ${allowed.join(", ")}`;
-        }
-        if (a.key === "GPU_POWER_CONNECTOR") {
-          if (value && !/^([0-9]+(\+)?)+-pin$/.test(value.trim())) err = "Định dạng ví dụ: 8-pin, 6+2-pin";
-        }
-      } else {
-        let numVal = value === "" ? null : Number(value);
-        if (value.trim() === "" || numVal == null || isNaN(numVal)) {
-          err = "Không được để trống";
-        } else if (!/^\d*\.?\d+$/.test(value.trim())) {
-          err = "Chỉ được nhập số thực dương, ví dụ: 4.80, 3.25, 2.5";
-        } else if (numVal <= 0) {
-          err = "Phải lớn hơn 0";
-        } else {
-          if (a.key === "CPU_CORES" && numVal! > 128) err = "Số nhân CPU tối đa 128";
-          if (a.key === "CPU_THREADS" && numVal! > 256) err = "Số luồng CPU tối đa 256";
-          if (a.key === "CPU_BASE_CLOCK_GHZ" && numVal! > 10) err = "Xung cơ bản tối đa 10GHz";
-          if (a.key === "CPU_BOOST_CLOCK_GHZ" && numVal! > 10) err = "Xung boost tối đa 10GHz";
-          if (a.key === "CPU_TDP_WATT" && numVal! > 500) err = "TDP CPU tối đa 500W";
-          if (a.key === "CPU_MAX_MEMORY_SPEED_MHZ" && numVal! > 10000) err = "RAM tối đa 10,000MHz";
-          if (a.key === "MB_RAM_SLOTS" && numVal! > 16) err = "Số khe RAM tối đa 16";
-          if (a.key === "MB_MAX_RAM_GB" && numVal! > 2048) err = "RAM tối đa 2048GB";
-          if (a.key === "MB_MAX_RAM_SPEED_MHZ" && numVal! > 10000) err = "RAM tối đa 10,000MHz";
-          if (a.key === "MB_PCIEX16_SLOTS" && numVal! > 8) err = "PCIe x16 tối đa 8";
-          if (a.key === "MB_M2_SLOTS" && numVal! > 8) err = "Khe M.2 tối đa 8";
-          if (a.key === "MB_SATA_PORTS" && numVal! > 12) err = "Cổng SATA tối đa 12";
-          if (a.key === "GPU_VRAM_GB" && numVal! > 64) err = "VRAM quá lớn";
-          if (a.key === "GPU_LENGTH_MM" && numVal! > 600) err = "Chiều dài không hợp lệ";
-          if (a.key === "GPU_TDP_WATT" && numVal! > 1000) err = "TDP GPU tối đa 1000W";
-          if (a.key === "CASE_GPU_CLEARANCE_MM" && numVal! > 400) err = "Hở GPU tối đa 400mm";
-          if (a.key === "CASE_CPU_COOLER_CLEARANCE_MM" && numVal! > 300) err = "Hở tản CPU tối đa 300mm";
-          if (a.key === "RAM_CAPACITY_GB" && numVal! > 512) err = "Dung lượng RAM tối đa 512GB";
-          if (a.key === "RAM_SPEED_MHZ" && numVal! > 10000) err = "Tốc độ RAM tối đa 10,000MHz";
-          if (a.key === "RAM_MODULES" && numVal! > 16) err = "Số thanh RAM tối đa 16";
-          if (a.key === "RAM_CL" && numVal! > 50) err = "CL tối đa 50";
-          if (a.key === "PSU_WATTAGE" && numVal! > 2000) err = "Công suất PSU tối đa 2000W";
-          if (a.key === "STORAGE_CAPACITY_GB" && numVal! > 16384) err = "Dung lượng lưu trữ tối đa 16TB";
-          if (a.key === "COOLER_TDP_WATT" && numVal! > 1000) err = "Công suất tản tối đa 1000W";
-          if (a.key === "COOLER_MAX_HEIGHT_MM" && numVal! > 300) err = "Chiều cao tản tối đa 300mm";
-        }
-      }
-      if (err) { newFieldErrors[a.key] = err; hasAttrError = true; }
-      if (err) {
-        console.log(`Lỗi thuộc tính kỹ thuật: key=${a.key}, value=${value}, lỗi=${err}`);
-      }
-    });
-    // Log lỗi tổng hợp các trường chính
-    Object.entries(newFieldErrors).forEach(([k,v]) => {
-      if (v) console.log(`Lỗi trường chính: ${k} - ${v}`);
-    });
-    setFieldErrors(newFieldErrors);
-    if (hasError || hasAttrError) return "Có trường không hợp lệ";
-    return null;
-  };
-
   const handleUpload = async () => {
     if (!imageFile) return;
-    setUploading(true); setError(null); setSuccess(null);
+    setUploading(true);
+    setError(null);
     try {
-      const fd = new FormData(); fd.append("file", imageFile);
+      const fd = new FormData();
+      fd.append("file", imageFile);
       const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed");
-      setImageUrl(data.url); setImageBlurData(data.blurDataUrl); setSuccess("Đã upload ảnh mới");
-    } catch (e: any) { setError(e.message); } finally { setUploading(false); }
+      setImageUrl(data.url);
+      setImageBlurData(data.blurDataUrl);
+      setSuccess("✓ Ảnh đã upload thành công");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setUploading(false);
+    }
   };
 
-  // Handle price input with formatting
-  const handlePriceChange = (value: string) => {
-    // Remove all non-digit characters
-    const numericValue = value.replace(/\D/g, '');
+  const validateField = useCallback((field: string, value: string) => {
+    let err = "";
+    if (field === "name") {
+      if (!value.trim()) err = "Tên sản phẩm bắt buộc";
+      else if (value.length < 5) err = "Tên quá ngắn (tối thiểu 5 ký tự)";
+    }
+    if (field === "categoryId") {
+      if (!value) err = "Cần chọn danh mục";
+    }
+    if (field === "brand") {
+      if (!value.trim()) err = "Thương hiệu bắt buộc";
+    }
+    if (field === "price") {
+      const p = Number(value);
+      if (isNaN(p) || p < 0) err = "Giá không hợp lệ";
+      else if (p > 2147483647) err = "Giá quá lớn";
+    }
+    if (field === "stock") {
+      const s = Number(value);
+      if (isNaN(s) || s < 0) err = "Tồn kho không hợp lệ";
+    }
     
+    setFieldErrors(prev => ({ ...prev, [field]: err }));
+    return err;
+  }, []);
+
+  const handlePriceChange = (value: string) => {
+    const numericValue = value.replace(/\D/g, '');
     if (numericValue === '') {
       setPrice('');
       setPriceDisplay('');
       return;
     }
-    
-    // Store raw numeric value
     setPrice(numericValue);
-    
-    // Format for display
     const formatted = Number(numericValue).toLocaleString('vi-VN');
     setPriceDisplay(formatted);
+    validateField('price', numericValue);
   };
 
-  const refetchProduct = async () => {
-    const res = await fetch(`/api/admin/products/${productId}`);
-    if (res.ok) {
-      const pdata = await res.json();
-      const p: ProductPayload = pdata.product;
-      setProduct(p);
-      setUpdatedAt(p.updatedAt);
-      setConflict(null);
-      setSuccess("Đã tải dữ liệu mới nhất sau xung đột");
+  const validateLocal = (): boolean => {
+    let hasError = false;
+    
+    if (validateField("name", name)) hasError = true;
+    if (validateField("categoryId", categoryId)) hasError = true;
+    if (validateField("brand", brand === 'custom' ? customBrand : brand)) hasError = true;
+    if (validateField("price", price)) hasError = true;
+    if (validateField("stock", stock)) hasError = true;
+    
+    for (const a of attributes) {
+      const tmpl = attrTemplates.find(t => t.key === a.key);
+      if (!tmpl) continue;
+      
+      if (tmpl.valueType === "STRING" && (!a.stringValue || a.stringValue === "")) {
+        setAttrErrors(prev => ({...prev, [a.key]: "Bắt buộc"}));
+        hasError = true;
+      }
+      if (tmpl.valueType === "NUMBER" && (a.numberValue == null || isNaN(a.numberValue))) {
+        setAttrErrors(prev => ({...prev, [a.key]: "Bắt buộc"}));
+        hasError = true;
+      }
+      if (attrErrors[a.key]) hasError = true;
     }
+    
+    return hasError;
   };
 
   const handleSave = async () => {
-    setError(null); setSuccess(null); setConflict(null);
-    const err = validateLocal(); if (err) { setError(err); return; }
+    setError(null);
+    setSuccess(null);
+    
+    if (validateLocal()) {
+      setError("⚠️ Vui lòng kiểm tra lại các trường bắt buộc");
+      return;
+    }
+    
     setSaving(true);
     try {
-      // Build body object cleanly, no duplicate keys
-        // Đảm bảo imageUrl là absolute URL nếu là path tương đối
-        let absoluteImageUrl = imageUrl;
-        if (imageUrl && !/^https?:\/\//.test(imageUrl)) {
-          if (typeof window !== 'undefined') {
-            absoluteImageUrl = window.location.origin + imageUrl;
-          }
-        }
-        // Convert price to cents: price is already in VND, multiply by 100
-        const priceInVnd = Number(price);
-        const priceCents = Math.round(priceInVnd * 100);
-        
-        console.log('DEBUG Price conversion:', { inputPrice: price, priceInVnd, priceCents });
-        
-        const body: Record<string, any> = {
-          name: name.trim(),
-          slug: slug.trim() || undefined,
-          priceCents,
-          stock: Number(stock),
-          categoryId,
-          featured,
-          status,
-          description: description || null,
-          imageUrl: absoluteImageUrl,
-          imageBlurData,
-          attributes: attributes.map(a => ({ key: a.key, stringValue: a.stringValue ?? null, numberValue: a.numberValue ?? null })),
-          updatedAt, // concurrency token
-        };
-      // Remove undefined fields (like slug if empty)
-      Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
-      // Log duy nhất body gửi lên API để debug
-      console.log('DEBUG PATCH gửi lên API:', body);
-      const res = await fetch(`/api/admin/products/${productId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const finalBrand = brand === 'custom' ? customBrand : brand;
+      const priceInVnd = Number(price);
+      const priceCents = Math.round(priceInVnd * 100);
+      
+      // Auto-generate meta fields if not set
+      const metaTitle = `${name} - Chính hãng giá tốt`;
+      const metaDescription = `Mua ${name} chính hãng với ${warranty} bảo hành, giá tốt nhất thị trường. Giao hàng nhanh toàn quốc.`;
+      
+      const body = {
+        id: productId,
+        name: name.trim(),
+        slug,
+        priceCents,
+        stock: Number(stock),
+        categoryId,
+        featured,
+        status,
+        description: description || null,
+        imageUrl,
+        imageBlurData,
+        brand: finalBrand || null,
+        manufacturer: manufacturer || null,
+        modelNumber: modelNumber || null,
+        warranty: warranty || null,
+        metaTitle,
+        metaDescription,
+        updatedAt,
+        attributes: attributes.map(a => ({ 
+          key: a.key, 
+          stringValue: a.stringValue ?? null, 
+          numberValue: a.numberValue ?? null 
+        }))
+      };
+      
+      const res = await fetch(`/api/admin/products/${productId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      
       const data = await res.json();
-      if (res.status === 409) {
-        setConflict({ currentUpdatedAt: data.currentUpdatedAt });
-        // Tải bản remote mới nhất để so sánh
-        const latestRes = await fetch(`/api/admin/products/${productId}`);
-        if (latestRes.ok) {
-          const latestData = await latestRes.json();
-            const remoteProd: ProductPayload = latestData.product;
-            setConflictRemote(remoteProd);
-            computeDiff(remoteProd);
-        }
-        setError("Xung đột cập nhật – so sánh và chọn giá trị muốn giữ.");
-        return;
-      }
+      
       if (!res.ok) {
-        // Hiển thị chi tiết lỗi trả về từ API
         if (data?.error?.fieldErrors) {
-          setError(Object.entries(data.error.fieldErrors).map(([k,v])=>`${k}: ${(v as string[]).join(', ')}`).join(' | '));
-        } else if (typeof data?.error === 'string') {
-          setError(data.error);
+          setError(Object.entries(data.error.fieldErrors)
+            .map(([k,v])=>`${k}: ${(v as string[]).join(', ')}`)
+            .join(' | '));
         } else {
-          setError("Cập nhật thất bại");
+          setError(data.error || "Cập nhật sản phẩm thất bại");
         }
         return;
       }
-      const p: ProductPayload = data.product;
-      setProduct(p);
-      setUpdatedAt(p.updatedAt);
-      setSuccess("Cập nhật thành công");
-    } catch (e: any) { setError(e.message); } finally { setSaving(false); }
+      
+      setSuccess("✓ Cập nhật sản phẩm thành công!");
+      setTimeout(() => {
+        router.push('/admin/products');
+      }, 1500);
+      
+    } catch (e: any) {
+      setError(e.message || "Đã xảy ra lỗi");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (loading) return <div className="p-6 text-sm">Đang tải...</div>;
-  if (!product) return <div className="p-6 text-sm text-red-600">Không có dữ liệu sản phẩm</div>;
+  const brandOptions = categorySlug ? (BRAND_OPTIONS[categorySlug] || []) : [];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-1 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue"></div>
+          <p className="mt-4 text-gray-6">Đang tải sản phẩm...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-dark">Chỉnh sửa sản phẩm</h1>
-        <Link href="/admin/products" className="text-sm text-blue hover:underline">Quay lại danh sách</Link>
-      </div>
-      <div className="bg-white rounded-xl shadow p-6 space-y-6">
-        {error && <div className="text-sm text-red-600 font-semibold" style={{color:'#dc2626'}}>{error}</div>}
-        {success && <div className="text-sm text-green-600">{success}</div>}
-        {conflict && conflictRemote && (
-          <div className="space-y-3">
-            <div className="text-xs text-orange-600">Xung đột: dữ liệu đã thay đổi bởi người khác. Chọn giá trị bạn muốn giữ rồi nhấn &quot;Ghi đè&quot;.</div>
-            <div className="overflow-auto max-h-64 border rounded">
-              <table className="min-w-full text-[11px]">
-                <thead className="bg-orange-50">
-                  <tr>
-                    <th className="px-2 py-1 text-left">Trường</th>
-                    <th className="px-2 py-1 text-left">Cục bộ</th>
-                    <th className="px-2 py-1 text-left">Remote</th>
-                    <th className="px-2 py-1 text-left">Giữ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.keys(diffSelection).length === 0 && Object.keys(attributeDiffSelection).length === 0 && (
-                    <tr><td colSpan={4} className="px-2 py-2 text-center text-gray-500">Không có khác biệt nào</td></tr>
-                  )}
-                  {Object.entries(diffSelection).map(([field, choice]) => {
-                    const remoteVal = (conflictRemote as any)[field];
-                    const localVal = ((): any => {
-                      switch(field){
-                        case 'priceCents': return Math.round(Number(price) * 100);
-                        case 'stock': return Number(stock);
-                        default: return (field === 'description' ? description : (field === 'name'? name : field === 'slug'? slug : field === 'status'? status : field === 'featured'? featured : field === 'categoryId'? categoryId : ''));
-                      }
-                    })();
-                    return (
-                      <tr key={field} className="border-t">
-                        <td className="px-2 py-1 font-medium">{field}</td>
-                        <td className="px-2 py-1 max-w-[180px] truncate" title={String(localVal)}>{String(localVal)}</td>
-                        <td className="px-2 py-1 max-w-[180px] truncate" title={String(remoteVal)}>{String(remoteVal)}</td>
-                        <td className="px-2 py-1">
-                          <div className="flex items-center gap-2">
-                            <label className="inline-flex items-center gap-1 cursor-pointer">
-                              <input type="radio" name={`keep-${field}`} checked={diffSelection[field]==='local'} onChange={()=>setDiffSelection(prev=>({...prev,[field]:'local'}))} />
-                              <span>Local</span>
-                            </label>
-                            <label className="inline-flex items-center gap-1 cursor-pointer">
-                              <input type="radio" name={`keep-${field}`} checked={diffSelection[field]==='remote'} onChange={()=>setDiffSelection(prev=>({...prev,[field]:'remote'}))} />
-                              <span>Remote</span>
-                            </label>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {attrTemplates.map(t => {
-                    if (!(t.key in attributeDiffSelection)) return null;
-                    const remoteAttr = conflictRemote.attributes.find(a=>a.attributeType.key===t.key);
-                    const localAttr = attributes.find(a=>a.key===t.key);
-                    const remoteVal = t.valueType==='STRING'? remoteAttr?.stringValue : remoteAttr?.numberValue;
-                    const localVal = t.valueType==='STRING'? localAttr?.stringValue : localAttr?.numberValue;
-                    return (
-                      <tr key={`attr-${t.key}`} className="border-t">
-                        <td className="px-2 py-1 font-medium">attr:{t.key}</td>
-                        <td className="px-2 py-1 max-w-[180px] truncate" title={String(localVal)}>{String(localVal)}</td>
-                        <td className="px-2 py-1 max-w-[180px] truncate" title={String(remoteVal)}>{String(remoteVal)}</td>
-                        <td className="px-2 py-1">
-                          <div className="flex items-center gap-2">
-                            <label className="inline-flex items-center gap-1 cursor-pointer">
-                              <input type="radio" name={`keep-attr-${t.key}`} checked={attributeDiffSelection[t.key]==='local'} onChange={()=>setAttributeDiffSelection(prev=>({...prev,[t.key]:'local'}))} />
-                              <span>Local</span>
-                            </label>
-                            <label className="inline-flex items-center gap-1 cursor-pointer">
-                              <input type="radio" name={`keep-attr-${t.key}`} checked={attributeDiffSelection[t.key]==='remote'} onChange={()=>setAttributeDiffSelection(prev=>({...prev,[t.key]:'remote'}))} />
-                              <span>Remote</span>
-                            </label>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+    <div className="min-h-screen bg-gray-1">
+      <div className="max-w-6xl mx-auto py-8 px-4">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h1 className="text-3xl font-bold text-dark">Chỉnh sửa sản phẩm</h1>
+              <p className="text-sm text-gray-6 mt-1">Cập nhật thông tin sản phẩm: {product?.name}</p>
             </div>
-            <div className="flex gap-2 justify-end">
-              <button onClick={refetchProduct} className="px-3 py-1 rounded border text-xs">Tải lại remote</button>
-              <button
-                onClick={async () => {
-                  if (!conflictRemote) return;
-                  setSaving(true); setError(null); setSuccess(null);
-                  try {
-                    // Build merged values
-                    const merged: any = {
-                      name: diffSelection.name==='local'? name.trim(): conflictRemote.name,
-                      slug: diffSelection.slug==='local'? (slug.trim()||undefined) : conflictRemote.slug,
-                      priceCents: diffSelection.priceCents==='local'? Math.round(Number(price)*100) : conflictRemote.priceCents,
-                      stock: diffSelection.stock==='local'? Number(stock) : conflictRemote.stock,
-                      status: diffSelection.status==='local'? status : conflictRemote.status,
-                      featured: diffSelection.featured==='local'? featured : conflictRemote.featured,
-                      description: diffSelection.description==='local'? (description||null) : conflictRemote.description,
-                      categoryId: diffSelection.categoryId==='local'? categoryId : conflictRemote.categoryId,
-                      imageUrl: imageUrl,
-                      imageBlurData: imageBlurData,
-                      attributes: attributes.map(a => {
-                        const remoteAttr = conflictRemote.attributes.find(r=>r.attributeType.key===a.key);
-                        const keepLocal = attributeDiffSelection[a.key]==='local';
-                        return {
-                          key: a.key,
-                          stringValue: keepLocal? a.stringValue ?? null : (remoteAttr?.stringValue ?? null),
-                          numberValue: keepLocal? a.numberValue ?? null : (remoteAttr?.numberValue ?? null)
-                        };
-                      }),
-                      updatedAt: conflictRemote.updatedAt
-                    };
-                    const patchRes = await fetch(`/api/admin/products/${productId}`, { method: 'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(merged) });
-                    const patchData = await patchRes.json();
-                    if (patchRes.status===409) {
-                      setError('Vẫn còn xung đột, thử lại sau');
-                      return;
-                    }
-                    if (!patchRes.ok) throw new Error(patchData.error || 'Ghi đè thất bại');
-                    const p: ProductPayload = patchData.product;
-                    setProduct(p);
-                    setUpdatedAt(p.updatedAt);
-                    setConflict(null);
-                    setConflictRemote(null);
-                    setDiffSelection({});
-                    setAttributeDiffSelection({});
-                    setSuccess('Đã hợp nhất và lưu thành công');
-                  } catch (e: any) {
-                    setError(e.message);
-                  } finally { setSaving(false); }
-                }}
-                disabled={saving}
-                className="px-3 py-1 rounded bg-orange-600 text-white text-xs disabled:opacity-50"
-              >Ghi đè & Lưu</button>
+            <Link 
+              href="/admin/products" 
+              className="px-4 py-2 text-sm font-medium text-gray-7 bg-white border border-gray-3 rounded-lg hover:bg-gray-2 transition-colors"
+            >
+              ← Quay lại
+            </Link>
+          </div>
+        </div>
+
+        {/* Alerts */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-light-6 border-l-4 border-red rounded-r-lg">
+            <div className="flex items-center">
+              <span className="text-red-dark-2 font-medium">{error}</span>
             </div>
           </div>
         )}
-        <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Tên</label>
-            <input className="w-full border rounded px-3 py-2 text-sm" value={name} onChange={e=>setName(e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Danh mục</label>
-            <select className="w-full border rounded px-3 py-2 text-sm" value={categoryId} onChange={e=>setCategoryId(e.target.value)}>
-              <option value="">-- Chọn --</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Slug</label>
-            <input className="w-full border rounded px-3 py-2 text-sm" value={slug} onChange={e=>setSlug(e.target.value)} placeholder="tu-dong-neu-de-trong" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Giá (VND)
-              <span className="ml-2 text-xs text-gray-500">
-                {priceDisplay && `≈ ${priceDisplay}₫`}
-              </span>
-            </label>
-            <input 
-              className="w-full border rounded px-3 py-2 text-sm font-mono" 
-              value={priceDisplay || price} 
-              onChange={e => handlePriceChange(e.target.value)} 
-              placeholder="Ví dụ: 1200000 hoặc 1,200,000" 
-            />
-            {fieldErrors.price && <div className="text-xs text-red-600 mt-1">{fieldErrors.price}</div>}
-            <div className="text-xs text-gray-500 mt-1">
-              💡 Nhập giá theo VND (ví dụ: 1200000 cho 1.2 triệu đồng)
+        
+        {success && (
+          <div className="mb-6 p-4 bg-green-light-7 border-l-4 border-green rounded-r-lg">
+            <div className="flex items-center">
+              <span className="text-green-dark-2 font-medium">{success}</span>
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Tồn kho</label>
-            <input className="w-full border rounded px-3 py-2 text-sm" value={stock} onChange={e=>setStock(e.target.value)} />
-            {fieldErrors.stock && <div className="text-xs text-red-600 mt-1">{fieldErrors.stock}</div>}
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium">Trạng thái</label>
-              <Tooltip
-                side="top"
-                content={
-                  <span>
-                    <strong>Nháp:</strong> Nội bộ, chưa bán.<br />
-                    <strong>Hiển thị:</strong> Đang bán, khách hàng thấy.<br />
-                    <strong>Lưu trữ:</strong> Ẩn khỏi danh sách, giữ lịch sử.
-                  </span>
-                }
-              >
-                <span className="inline-flex h-4 w-4 items-center justify-center rounded bg-gray-700 text-[10px] font-bold text-white cursor-help">i</span>
-              </Tooltip>
-            </div>
-            <select className="w-full border rounded px-3 py-2 text-sm" value={status} onChange={e=>setStatus(e.target.value as any)}>
-              <option value="DRAFT">Nháp</option>
-              <option value="PUBLISHED">Hiển thị</option>
-              <option value="ARCHIVED">Lưu trữ</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-2 pt-6">
-            <input id="featured" type="checkbox" checked={featured} onChange={e=>setFeatured(e.target.checked)} />
-            <label htmlFor="featured" className="text-sm">Hiển thị trang chủ</label>
-            <Tooltip
-              side="top"
-              content={<span>Cho phép sản phẩm tham gia các block nổi bật ngoài Trang chủ.</span>}
+        )}
+
+        {/* Tabs */}
+        <div className="bg-white rounded-t-xl shadow-sm border-b">
+          <div className="flex space-x-8 px-6">
+            <button
+              onClick={() => setActiveTab('basic')}
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'basic'
+                  ? 'border-blue text-blue'
+                  : 'border-transparent text-gray-5 hover:text-gray-7'
+              }`}
             >
-              <span className="inline-flex h-4 w-4 items-center justify-center rounded bg-gray-700 text-[10px] font-bold text-white cursor-help">i</span>
-            </Tooltip>
+              📦 Thông tin cơ bản
+            </button>
+            <button
+              onClick={() => setActiveTab('specs')}
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'specs'
+                  ? 'border-blue text-blue'
+                  : 'border-transparent text-gray-5 hover:text-gray-7'
+              }`}
+            >
+              ⚙️ Thông số kỹ thuật {attrTemplates.length > 0 && `(${attrTemplates.length})`}
+            </button>
           </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Mô tả</label>
-          <textarea className="w-full border rounded px-3 py-2 text-sm" rows={4} value={description} onChange={e=>setDescription(e.target.value)} />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-2">Ảnh sản phẩm</label>
-          <div className="flex items-center gap-4 flex-wrap">
-            <input type="file" accept="image/*" onChange={e=>{const f=e.target.files?.[0]; setImageFile(f||null); setImagePreview(f?URL.createObjectURL(f):"");}} />
-            <button disabled={!imageFile || uploading} onClick={handleUpload} className="px-4 py-2 text-sm rounded bg-blue text-white disabled:opacity-50">{uploading?"Đang upload...":"Upload mới"}</button>
-            {imageUrl && <span className="text-xs text-green-700 break-all">Hiện tại: {imageUrl}</span>}
-          </div>
-          {(imagePreview || imageUrl) && (
-            <div className="mt-3 flex gap-4">
-              {imagePreview && <Image src={imagePreview} alt="preview" width={160} height={120} className="rounded border" />}
-              {imageUrl && !imagePreview && <Image src={imageUrl} alt="current" width={160} height={120} className="rounded border" />}
+
+        {/* Content */}
+        <div className="bg-white rounded-b-xl shadow-sm p-8">
+          {/* Basic Info Tab */}
+          {activeTab === 'basic' && (
+            <div className="space-y-8">
+              {/* Product Identity */}
+              <section>
+                <h2 className="text-lg font-semibold text-dark mb-4">Thông tin sản phẩm</h2>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-7 mb-2">
+                      Tên sản phẩm <span className="text-red">*</span>
+                    </label>
+                    <input
+                      className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue focus:border-transparent transition-shadow ${
+                        fieldErrors.name ? 'border-red' : 'border-gray-3'
+                      }`}
+                      value={name}
+                      onChange={e => {setName(e.target.value); validateField('name', e.target.value);}}
+                      placeholder="VD: CPU Intel Core i7-13700K"
+                    />
+                    {fieldErrors.name && <p className="text-xs text-red mt-1">{fieldErrors.name}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-7 mb-2">
+                      Danh mục <span className="text-red">*</span>
+                    </label>
+                    <select
+                      className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue focus:border-transparent ${
+                        fieldErrors.categoryId ? 'border-red' : 'border-gray-3'
+                      }`}
+                      value={categoryId}
+                      onChange={e => {setCategoryId(e.target.value); validateField('categoryId', e.target.value);}}
+                    >
+                      <option value="">-- Chọn danh mục --</option>
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    {fieldErrors.categoryId && <p className="text-xs text-red mt-1">{fieldErrors.categoryId}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-7 mb-2">
+                      Thương hiệu <span className="text-red">*</span>
+                    </label>
+                    <select
+                      className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue focus:border-transparent ${
+                        fieldErrors.brand ? 'border-red' : 'border-gray-3'
+                      }`}
+                      value={brand}
+                      onChange={e => {setBrand(e.target.value); validateField('brand', e.target.value);}}
+                      disabled={!categorySlug}
+                    >
+                      <option value="">-- Chọn thương hiệu --</option>
+                      {brandOptions.map(b => <option key={b} value={b}>{b}</option>)}
+                      <option value="custom">✏️ Nhập thủ công...</option>
+                    </select>
+                    {brand === 'custom' && (
+                      <input
+                        className="w-full border border-gray-3 rounded-lg px-4 py-2.5 text-sm mt-2 focus:ring-2 focus:ring-blue"
+                        value={customBrand}
+                        onChange={e => {setCustomBrand(e.target.value); validateField('brand', e.target.value);}}
+                        placeholder="Nhập tên thương hiệu"
+                      />
+                    )}
+                    {fieldErrors.brand && <p className="text-xs text-red mt-1">{fieldErrors.brand}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-7 mb-2">
+                      Nhà sản xuất / Dòng sản phẩm
+                    </label>
+                    <input
+                      className="w-full border border-gray-3 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue focus:border-transparent"
+                      value={manufacturer}
+                      onChange={e => setManufacturer(e.target.value)}
+                      placeholder="VD: ASUS ROG Strix, MSI Gaming X"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-7 mb-2">
+                      Mã sản phẩm (Model Number)
+                    </label>
+                    <input
+                      className="w-full border border-gray-3 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue focus:border-transparent"
+                      value={modelNumber}
+                      onChange={e => setModelNumber(e.target.value)}
+                      placeholder="VD: BX8071513700K"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              {/* Pricing & Stock */}
+              <section>
+                <h2 className="text-lg font-semibold text-dark mb-4">Giá & Kho hàng</h2>
+                <div className="grid md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-7 mb-2">
+                      Giá (VND) <span className="text-red">*</span>
+                    </label>
+                    <input
+                      className={`w-full border rounded-lg px-4 py-2.5 text-sm font-mono focus:ring-2 focus:ring-blue focus:border-transparent ${
+                        fieldErrors.price ? 'border-red' : 'border-gray-3'
+                      }`}
+                      value={priceDisplay || price}
+                      onChange={e => handlePriceChange(e.target.value)}
+                      placeholder="1,200,000"
+                    />
+                    {priceDisplay && <p className="text-xs text-gray-5 mt-1">≈ {priceDisplay}₫</p>}
+                    {fieldErrors.price && <p className="text-xs text-red mt-1">{fieldErrors.price}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-7 mb-2">
+                      Tồn kho <span className="text-red">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue focus:border-transparent ${
+                        fieldErrors.stock ? 'border-red' : 'border-gray-3'
+                      }`}
+                      value={stock}
+                      onChange={e => {setStock(e.target.value); validateField('stock', e.target.value);}}
+                      min="0"
+                    />
+                    {fieldErrors.stock && <p className="text-xs text-red mt-1">{fieldErrors.stock}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-7 mb-2">
+                      Bảo hành
+                    </label>
+                    <select
+                      className="w-full border border-gray-3 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue focus:border-transparent"
+                      value={warranty}
+                      onChange={e => setWarranty(e.target.value)}
+                    >
+                      {WARRANTY_OPTIONS.map(w => <option key={w} value={w}>{w}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </section>
+
+              {/* Status & Settings */}
+              <section>
+                <h2 className="text-lg font-semibold text-dark mb-4">Trạng thái & Cài đặt</h2>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-7 mb-2">
+                      Trạng thái sản phẩm
+                    </label>
+                    <select
+                      className="w-full border border-gray-3 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue focus:border-transparent"
+                      value={status}
+                      onChange={e => setStatus(e.target.value as any)}
+                    >
+                      <option value="DRAFT">📝 Nháp (Draft)</option>
+                      <option value="PUBLISHED">✅ Hiển thị (Published)</option>
+                      <option value="OUT_OF_STOCK">📦 Hết hàng (Out of Stock)</option>
+                      <option value="DISCONTINUED">🚫 Ngừng kinh doanh (Discontinued)</option>
+                      <option value="ARCHIVED">🗄️ Lưu trữ (Archived)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center pt-8">
+                    <input
+                      id="featured"
+                      type="checkbox"
+                      checked={featured}
+                      onChange={e => setFeatured(e.target.checked)}
+                      className="w-4 h-4 text-blue border-gray-3 rounded focus:ring-blue"
+                    />
+                    <label htmlFor="featured" className="ml-3 text-sm font-medium text-gray-7">
+                      ⭐ Hiển thị trang chủ (Featured)
+                    </label>
+                  </div>
+                </div>
+              </section>
+
+              {/* Description */}
+              <section>
+                <h2 className="text-lg font-semibold text-dark mb-4">Mô tả sản phẩm</h2>
+                <textarea
+                  className="w-full border border-gray-3 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue focus:border-transparent"
+                  rows={6}
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  placeholder="Nhập mô tả chi tiết về sản phẩm..."
+                />
+              </section>
+
+              {/* Image Upload */}
+              <section>
+                <h2 className="text-lg font-semibold text-dark mb-4">Hình ảnh sản phẩm</h2>
+                <div className="border-2 border-dashed border-gray-3 rounded-lg p-8">
+                  <div className="flex flex-col items-center justify-center space-y-4">
+                    {(imagePreview || imageUrl) ? (
+                      <div className="relative">
+                        <Image 
+                          src={imagePreview || imageUrl!} 
+                          alt="Preview" 
+                          width={300} 
+                          height={300} 
+                          className="rounded-lg border-2 border-gray-2 object-cover"
+                        />
+                        {imageUrl && !imagePreview && (
+                          <div className="absolute top-2 right-2 bg-green text-white px-3 py-1 rounded-full text-xs font-medium">
+                            ✓ Ảnh hiện tại
+                          </div>
+                        )}
+                        {imagePreview && (
+                          <div className="absolute top-2 right-2 bg-yellow text-white px-3 py-1 rounded-full text-xs font-medium">
+                            ⏳ Chưa lưu
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <svg className="mx-auto h-12 w-12 text-gray-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p className="mt-2 text-sm text-gray-6">Chưa có ảnh</p>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={e => {
+                          const f = e.target.files?.[0];
+                          setImageFile(f || null);
+                          setImagePreview(f ? URL.createObjectURL(f) : "");
+                        }}
+                        className="block text-sm text-gray-5 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-light-6 file:text-blue hover:file:bg-blue-light-5"
+                      />
+                      <button
+                        onClick={handleUpload}
+                        disabled={!imageFile || uploading}
+                        className="px-6 py-2 text-sm font-medium text-white bg-blue rounded-lg hover:bg-blue-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {uploading ? "Đang upload..." : "Upload ảnh mới"}
+                      </button>
+                    </div>
+                    
+                    <p className="text-xs text-gray-5">
+                      Hỗ trợ: JPG, PNG, GIF (tối đa 5MB)
+                    </p>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
+
+          {/* Specs Tab */}
+          {activeTab === 'specs' && (
+            <div className="space-y-6">
+              <div className="bg-blue-light-6 border border-blue-light-4 rounded-lg p-4">
+                <p className="text-sm text-blue-dark-2">
+                  💡 <strong>Lưu ý:</strong> Thay đổi danh mục sẽ reset các thông số kỹ thuật
+                </p>
+              </div>
+
+              {attrTemplates.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-5">Không có thông số kỹ thuật cho danh mục này</p>
+                </div>
+              ) : (
+                <>
+                  <h2 className="text-lg font-semibold text-dark">
+                    Thông số kỹ thuật ({attrTemplates.length} trường)
+                  </h2>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {attrTemplates.map(t => {
+                      const st = attributes.find(a => a.key === t.key);
+                      return (
+                        <div key={t.key}>
+                          <label className="block text-sm font-medium text-gray-7 mb-2">
+                            {t.label} <span className="text-red">*</span>
+                          </label>
+                          {t.valueType === "STRING" ? (
+                            <input
+                              className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue focus:border-transparent ${
+                                attrErrors[t.key] ? 'border-red' : 'border-gray-3'
+                              }`}
+                              value={st?.stringValue || ""}
+                              onChange={e => onAttrChange(t.key, e.target.value)}
+                            />
+                          ) : (
+                            <input
+                              type="number"
+                              step="any"
+                              className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue focus:border-transparent ${
+                                attrErrors[t.key] ? 'border-red' : 'border-gray-3'
+                              }`}
+                              value={st?.numberValue ?? ""}
+                              onChange={e => onAttrChange(t.key, e.target.value)}
+                            />
+                          )}
+                          {attrErrors[t.key] && (
+                            <p className="text-xs text-red mt-1">{attrErrors[t.key]}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
-        {attrTemplates.length > 0 && (
-          <div>
-            <h2 className="text-sm font-semibold mb-2">Thuộc tính kỹ thuật</h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              {attrTemplates.map(t => {
-                const st = attributes.find(a => a.key === t.key);
-                const err = attrErrors[t.key];
-                return (
-                  <div key={t.key} className="space-y-1">
-                    <label className="block text-xs font-medium">{t.label}</label>
-                    {t.valueType === "STRING" ? (
-                      <input className={`w-full border rounded px-2 py-1 text-xs ${err ? 'border-red-500' : ''}`} value={st?.stringValue || ""} onChange={e=>onAttrChange(t.key, e.target.value)} />
-                    ) : (
-                      <input className={`w-full border rounded px-2 py-1 text-xs ${err ? 'border-red-500' : ''}`} type="number" step="any" value={st?.numberValue ?? ""} onChange={e=>onAttrChange(t.key, e.target.value)} />
-                    )}
-                    {err && <div className="text-xs text-red-600 font-semibold mt-1" style={{color:'#dc2626'}}>{err}</div>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-        <div className="flex justify-end mt-8 gap-4">
+
+        {/* Actions */}
+        <div className="mt-8 flex items-center justify-between">
+          <Link
+            href="/admin/products"
+            className="px-6 py-3 text-sm font-medium text-gray-7 bg-white border border-gray-3 rounded-lg hover:bg-gray-2 transition-colors"
+          >
+            Hủy bỏ
+          </Link>
+          
           <button
-            type="button"
             onClick={handleSave}
             disabled={saving}
-            style={{
-              border: '2px solid #1a7f37',
-              background: saving ? '#e5e7eb' : '#22c55e',
-              color: saving ? '#888' : '#fff',
-              fontWeight: 700,
-              fontSize: 16,
-              borderRadius: 8,
-              padding: '12px 32px',
-              opacity: saving ? 0.6 : 1,
-              cursor: saving ? 'not-allowed' : 'pointer',
-            }}
+            className="px-8 py-3 text-sm font-semibold text-white bg-green rounded-lg hover:bg-green-dark disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
           >
-            {saving ? "Đang lưu..." : "Lưu thay đổi"}
+            {saving ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Đang lưu...
+              </span>
+            ) : (
+              "✓ Cập nhật sản phẩm"
+            )}
           </button>
-          {/* Nút Xóa vĩnh viễn, chỉ hiện khi chưa có order liên quan */}
-          {product && (product as any).orderItemCount === 0 && (
-            <button
-              type="button"
-              onClick={async () => {
-                if (!window.confirm('Bạn có chắc chắn muốn xóa vĩnh viễn sản phẩm này? Hành động này không thể hoàn tác!')) return;
-                setSaving(true);
-                setError(null); setSuccess(null);
-                try {
-                  const res = await fetch(`/api/admin/products/${productId}`, { method: 'DELETE' });
-                  const data = await res.json();
-                  if (!res.ok) throw new Error(data.error || 'Xóa thất bại');
-                  setSuccess('Đã xóa sản phẩm vĩnh viễn!');
-                  // Có thể chuyển hướng về danh sách sản phẩm
-                  window.location.href = '/admin/products';
-                } catch (e: any) {
-                  setError(e.message);
-                } finally {
-                  setSaving(false);
-                }
-              }}
-              style={{
-                border: '2px solid #b91c1c',
-                background: '#fff',
-                color: '#b91c1c',
-                fontWeight: 700,
-                fontSize: 16,
-                borderRadius: 8,
-                padding: '12px 32px',
-                opacity: saving ? 0.6 : 1,
-                cursor: saving ? 'not-allowed' : 'pointer',
-              }}
-              disabled={saving}
-            >
-              Xóa vĩnh viễn
-            </button>
-          )}
         </div>
-        <div className="text-[10px] text-gray-400">updatedAt token: {updatedAt}</div>
       </div>
     </div>
   );

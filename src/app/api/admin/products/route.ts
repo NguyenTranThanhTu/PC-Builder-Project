@@ -18,8 +18,9 @@ export async function GET(req: NextRequest) {
   const q = searchParams.get("q")?.trim() || "";
   const categorySlug = searchParams.get("category") || undefined;
   const categoryId = searchParams.get("categoryId") || undefined;
+  const brand = searchParams.get("brand") || undefined;
   const featuredParam = searchParams.get("featured");
-  const statusParam = searchParams.get("status") || undefined; // DRAFT|PUBLISHED|ARCHIVED
+  const statusParam = searchParams.get("status") || undefined; // DRAFT|PUBLISHED|ARCHIVED|OUT_OF_STOCK|DISCONTINUED
   const sortField = searchParams.get("sort") === "price" ? "priceCents" : "createdAt";
   const sortOrder = searchParams.get("order") === "asc" ? "asc" : "desc";
 
@@ -30,6 +31,9 @@ export async function GET(req: NextRequest) {
     where.categoryId = categoryId;
   } else if (categorySlug) {
     where.category = { slug: categorySlug };
+  }
+  if (brand) {
+    where.brand = brand;
   }
   if (statusParam) {
     where.status = statusParam as ProductStatus;
@@ -54,9 +58,14 @@ export async function GET(req: NextRequest) {
         slug: true,
         name: true,
         priceCents: true,
+        stock: true,
+        status: true,
         featured: true,
         imageUrl: true,
         imageBlurData: true,
+        brand: true,
+        manufacturer: true,
+        warranty: true,
         category: { select: { id: true, name: true, slug: true } },
         createdAt: true,
         updatedAt: true,
@@ -134,6 +143,14 @@ export async function POST(req: NextRequest) {
           featured: data.featured ?? false,
           status: (data.status as ProductStatus) ?? "PUBLISHED",
           archivedAt: null,
+          
+          // New fields
+          brand: data.brand ?? null,
+          manufacturer: data.manufacturer ?? null,
+          modelNumber: data.modelNumber ?? null,
+          warranty: data.warranty ?? null,
+          metaTitle: data.metaTitle ?? null,
+          metaDescription: data.metaDescription ?? null,
         },
       });
 

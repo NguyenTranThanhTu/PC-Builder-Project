@@ -11,7 +11,10 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "seed:demo": "node prisma/seed-demo.cjs",
-    "seed:compat": "node prisma/seed-compat.cjs"
+    "seed:compat": "node prisma/seed-compat.cjs",
+    "generate:products": "node scripts/generate-products.js",
+    "generate:realistic": "node scripts/generate-realistic-products.js",
+    "generate:60": "node scripts/generate-60-products.js"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -26,6 +29,7 @@
     "next": "15.2.3",
     "next-auth": "^4.24.13",
     "postcss": "8.4.29",
+    "puppeteer": "^24.33.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-hot-toast": "^2.4.1",

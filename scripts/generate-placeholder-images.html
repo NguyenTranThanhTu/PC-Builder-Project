@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Product Placeholder Images</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; }
+        .category {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .category h2 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        canvas {
+            margin: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .download-btn {
+            background: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 10px 5px;
+        }
+        .download-btn:hover {
+            background: #2980b9;
+        }
+        .info {
+            background: #e8f4f8;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🖼️ Tạo Hình Ảnh Placeholder cho Sản Phẩm</h1>
+    
+    <div class="info">
+        <strong>Hướng dẫn:</strong>
+        <ol>
+            <li>Click các nút "Download All ..." để tải về tất cả ảnh của từng loại</li>
+            <li>Hoặc click chuột phải vào từng ảnh để "Save Image As..."</li>
+            <li>Lưu các file vào thư mục: <code>public/images/products/</code></li>
+            <li>Hoặc có thể thay thế bằng hình ảnh thật sau</li>
+        </ol>
+    </div>
+
+    <div id="placeholder-container"></div>
+
+    <script>
+        const PRODUCTS = {
+            cpu: [
+                { name: 'Intel Core i9-14900K', image: 'i9-14900k.jpg', color: '#2c3e50' },
+                { name: 'Intel Core i9-14900KF', image: 'i9-14900kf.jpg', color: '#2c3e50' },
+                { name: 'Intel Core i7-14700K', image: 'i7-14700k.jpg', color: '#34495e' },
+                { name: 'Intel Core i7-14700KF', image: 'i7-14700kf.jpg', color: '#34495e' },
+                { name: 'Intel Core i5-14600K', image: 'i5-14600k.jpg', color: '#7f8c8d' },
+                { name: 'Intel Core i5-14400F', image: 'i5-14400f.jpg', color: '#95a5a6' },
+                { name: 'Intel Core i9-13900K', image: 'i9-13900k.jpg', color: '#2c3e50' },
+                { name: 'Intel Core i7-13700K', image: 'i7-13700k.jpg', color: '#34495e' },
+                { name: 'Intel Core i5-13600K', image: 'i5-13600k.jpg', color: '#7f8c8d' },
+                { name: 'Intel Core i5-13400F', image: 'i5-13400f.jpg', color: '#95a5a6' },
+                { name: 'AMD Ryzen 9 7950X', image: 'ryzen-9-7950x.jpg', color: '#e74c3c' },
+                { name: 'AMD Ryzen 9 7900X', image: 'ryzen-9-7900x.jpg', color: '#e74c3c' },
+                { name: 'AMD Ryzen 7 7800X3D', image: 'ryzen-7-7800x3d.jpg', color: '#c0392b' },
+                { name: 'AMD Ryzen 7 7700X', image: 'ryzen-7-7700x.jpg', color: '#c0392b' },
+                { name: 'AMD Ryzen 5 7600X', image: 'ryzen-5-7600x.jpg', color: '#e67e22' },
+                { name: 'AMD Ryzen 9 5950X', image: 'ryzen-9-5950x.jpg', color: '#d35400' },
+                { name: 'AMD Ryzen 9 5900X', image: 'ryzen-9-5900x.jpg', color: '#d35400' },
+                { name: 'AMD Ryzen 7 5800X3D', image: 'ryzen-7-5800x3d.jpg', color: '#e67e22' },
+                { name: 'AMD Ryzen 7 5700X', image: 'ryzen-7-5700x.jpg', color: '#e67e22' },
+                { name: 'AMD Ryzen 5 5600X', image: 'ryzen-5-5600x.jpg', color: '#f39c12' },
+            ],
+            gpu: [
+                { name: 'RTX 4090', image: 'asus-rtx-4090-strix.jpg', color: '#27ae60' },
+                { name: 'RTX 4080 SUPER', image: 'msi-rtx-4080-super.jpg', color: '#27ae60' },
+                { name: 'RTX 4070 Ti SUPER', image: 'gigabyte-rtx-4070-ti-super.jpg', color: '#2ecc71' },
+                { name: 'RTX 4070 SUPER', image: 'asus-rtx-4070-super.jpg', color: '#2ecc71' },
+                { name: 'RTX 4060 Ti', image: 'msi-rtx-4060-ti.jpg', color: '#16a085' },
+                { name: 'RTX 4060', image: 'gigabyte-rtx-4060.jpg', color: '#1abc9c' },
+                { name: 'RX 7900 XTX', image: 'sapphire-rx-7900-xtx.jpg', color: '#e74c3c' },
+                { name: 'RX 7900 XT', image: 'xfx-rx-7900-xt.jpg', color: '#e74c3c' },
+                { name: 'RX 7800 XT', image: 'asus-rx-7800-xt.jpg', color: '#c0392b' },
+                { name: 'RX 7700 XT', image: 'gigabyte-rx-7700-xt.jpg', color: '#c0392b' },
+                { name: 'RX 7600', image: 'xfx-rx-7600.jpg', color: '#e67e22' },
+            ],
+            mainboard: [
+                { name: 'Z790 Hero', image: 'asus-z790-hero.jpg', color: '#3498db' },
+                { name: 'Z790 Carbon', image: 'msi-z790-carbon.jpg', color: '#2980b9' },
+                { name: 'Z790 Elite', image: 'gigabyte-z790-elite.jpg', color: '#3498db' },
+                { name: 'Z790 Pro', image: 'asrock-z790-pro.jpg', color: '#5dade2' },
+                { name: 'B760 Tomahawk', image: 'msi-b760-tomahawk.jpg', color: '#85c1e9' },
+                { name: 'B760 TUF', image: 'asus-b760-tuf.jpg', color: '#85c1e9' },
+                { name: 'X670E Hero', image: 'asus-x670e-hero.jpg', color: '#9b59b6' },
+                { name: 'X670E Master', image: 'gigabyte-x670e-master.jpg', color: '#8e44ad' },
+                { name: 'B650 Tomahawk', image: 'msi-b650-tomahawk.jpg', color: '#bb8fce' },
+                { name: 'B650 TUF', image: 'asus-b650-tuf.jpg', color: '#bb8fce' },
+            ],
+            ram: [
+                { name: 'DDR5-6400', image: 'corsair-ddr5-6400.jpg', color: '#e74c3c' },
+                { name: 'DDR5-6000', image: 'gskill-ddr5-6000.jpg', color: '#e74c3c' },
+                { name: 'DDR5-5600', image: 'kingston-ddr5-5600.jpg', color: '#c0392b' },
+                { name: 'DDR5-5200', image: 'corsair-ddr5-5200.jpg', color: '#c0392b' },
+                { name: 'DDR4-3600', image: 'gskill-ddr4-3600.jpg', color: '#f39c12' },
+                { name: 'DDR4-3200 RGB', image: 'corsair-ddr4-3200.jpg', color: '#f39c12' },
+                { name: 'DDR4-3200', image: 'kingston-ddr4-3200.jpg', color: '#e67e22' },
+                { name: 'DDR4-3000', image: 'crucial-ddr4-3000.jpg', color: '#e67e22' },
+            ],
+            storage: [
+                { name: '990 Pro 2TB', image: 'samsung-990-pro-2tb.jpg', color: '#f39c12' },
+                { name: 'SN850X 2TB', image: 'wd-sn850x-2tb.jpg', color: '#3498db' },
+                { name: '990 Pro 1TB', image: 'samsung-990-pro-1tb.jpg', color: '#f39c12' },
+                { name: 'KC3000 1TB', image: 'kingston-kc3000-1tb.jpg', color: '#e74c3c' },
+                { name: 'P5 Plus 1TB', image: 'crucial-p5-plus-1tb.jpg', color: '#e67e22' },
+                { name: '980 1TB', image: 'samsung-980-1tb.jpg', color: '#95a5a6' },
+                { name: 'SN570 1TB', image: 'wd-sn570-1tb.jpg', color: '#7f8c8d' },
+                { name: 'NV2 500GB', image: 'kingston-nv2-500gb.jpg', color: '#34495e' },
+            ],
+            psu: [
+                { name: 'RM1000x', image: 'corsair-rm1000x.jpg', color: '#9b59b6' },
+                { name: 'Focus GX-850', image: 'seasonic-gx-850.jpg', color: '#8e44ad' },
+                { name: 'MAG A750GL', image: 'msi-a750gl.jpg', color: '#7d3c98' },
+                { name: 'MWE 650', image: 'coolermaster-mwe-650.jpg', color: '#6c3483' },
+                { name: 'Smart 500', image: 'thermaltake-smart-500.jpg', color: '#5b2c6f' },
+            ],
+            case: [
+                { name: 'O11 Dynamic', image: 'lian-li-o11-dynamic.jpg', color: '#34495e' },
+                { name: 'Torrent', image: 'fractal-torrent.jpg', color: '#2c3e50' },
+                { name: 'H710i', image: 'nzxt-h710i.jpg', color: '#1a252f' },
+                { name: '4000D Airflow', image: 'corsair-4000d.jpg', color: '#3c5a70' },
+                { name: 'Q300L', image: 'coolermaster-q300l.jpg', color: '#566573' },
+            ],
+            cooler: [
+                { name: 'H150i Elite', image: 'corsair-h150i-elite.jpg', color: '#16a085' },
+                { name: 'Kraken X73', image: 'nzxt-kraken-x73.jpg', color: '#1abc9c' },
+                { name: 'ML240L', image: 'coolermaster-ml240l.jpg', color: '#48c9b0' },
+                { name: 'NH-D15', image: 'noctua-nhd15.jpg', color: '#7f6a53' },
+                { name: 'Dark Rock Pro 4', image: 'bequiet-drp4.jpg', color: '#2c3e50' },
+                { name: 'Hyper 212', image: 'coolermaster-hyper212.jpg', color: '#34495e' },
+                { name: 'AK400', image: 'deepcool-ak400.jpg', color: '#5d6d7e' },
+            ],
+        };
+
+        function createPlaceholderImage(text, color, width, height, category) {
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+
+            // Background
+            ctx.fillStyle = color;
+            ctx.fillRect(0, 0, width, height);
+
+            // Category label (top)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(category.toUpperCase(), width / 2, 30);
+
+            // Product name (center)
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Word wrap for long names
+            const words = text.split(' ');
+            let line = '';
+            let y = height / 2;
+            const lineHeight = 28;
+            const lines = [];
+            
+            words.forEach(word => {
+                const testLine = line + word + ' ';
+                const metrics = ctx.measureText(testLine);
+                if (metrics.width > width - 40 && line !== '') {
+                    lines.push(line);
+                    line = word + ' ';
+                } else {
+                    line = testLine;
+                }
+            });
+            lines.push(line);
+
+            const startY = y - (lines.length * lineHeight) / 2;
+            lines.forEach((line, i) => {
+                ctx.fillText(line.trim(), width / 2, startY + i * lineHeight);
+            });
+
+            // Icon/symbol (bottom)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.font = 'bold 24px Arial';
+            ctx.fillText('🖼️', width / 2, height - 30);
+
+            return canvas;
+        }
+
+        function downloadCanvas(canvas, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/jpeg', 0.9);
+            link.click();
+        }
+
+        function init() {
+            const container = document.getElementById('placeholder-container');
+
+            Object.entries(PRODUCTS).forEach(([category, products]) => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'category';
+                
+                const title = document.createElement('h2');
+                title.textContent = `${category.toUpperCase()} (${products.length} sản phẩm)`;
+                categoryDiv.appendChild(title);
+
+                const downloadAllBtn = document.createElement('button');
+                downloadAllBtn.className = 'download-btn';
+                downloadAllBtn.textContent = `Download All ${category.toUpperCase()}`;
+                downloadAllBtn.onclick = () => {
+                    products.forEach(product => {
+                        const canvas = categoryDiv.querySelector(`[data-image="${product.image}"]`);
+                        if (canvas) {
+                            setTimeout(() => downloadCanvas(canvas, product.image.replace('.jpg', '.jpg')), 100);
+                        }
+                    });
+                };
+                categoryDiv.appendChild(downloadAllBtn);
+
+                products.forEach(product => {
+                    const width = category === 'ram' ? 400 : category === 'case' ? 400 : 400;
+                    const height = category === 'ram' ? 200 : category === 'case' ? 500 : category === 'gpu' ? 300 : 400;
+                    
+                    const canvas = createPlaceholderImage(
+                        product.name,
+                        product.color,
+                        width,
+                        height,
+                        category
+                    );
+                    canvas.dataset.image = product.image;
+                    canvas.title = `Click chuột phải để lưu: ${product.image}`;
+                    categoryDiv.appendChild(canvas);
+                });
+
+                container.appendChild(categoryDiv);
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>

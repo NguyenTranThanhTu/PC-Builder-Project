@@ -5,7 +5,8 @@ import { formatVnd } from "@/lib/formatVnd";
 import { useAppDispatch } from "@/redux/useAppDispatch";
 import { addItemToCart, removeItemFromCart, updateCartItemQuantity } from "@/redux/features/cart-slice";
 import { useAppSelector } from "@/redux/store";
-import { CpuChipIcon, DevicePhoneMobileIcon, ServerStackIcon, BoltIcon, RectangleStackIcon, CubeTransparentIcon, Squares2X2Icon, FireIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { CpuChipIcon, DevicePhoneMobileIcon, ServerStackIcon, BoltIcon, RectangleStackIcon, CubeTransparentIcon, Squares2X2Icon, FireIcon, CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon, InformationCircleIcon, ChevronDownIcon, ChevronUpIcon, LightBulbIcon } from '@heroicons/react/24/outline';
+import CompatibilityResults, { type CompatibilityIssue } from './CompatibilityResults';
 
 type SimpleProduct = {
   id: string;
@@ -52,9 +53,12 @@ export default function PCBuilderClient() {
   const [suggestions, setSuggestions] = useState<Record<string, SimpleProduct[]>>({});
   const [loadingSuggest, setLoadingSuggest] = useState(false);
   const [checking, setChecking] = useState(false);
-  const [issues, setIssues] = useState<{ message: string; leftProductId?: string; rightProductId?: string }[]>([]);
+  const [issues, setIssues] = useState<CompatibilityIssue[]>([]);
   const [checkResultOpen, setCheckResultOpen] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
+  const [expandedIssues, setExpandedIssues] = useState<Set<number>>(new Set());
+  
+  const cartItems = useAppSelector(state => state.cartReducer.items);
 
   const selectedIds = useMemo(
     () => Object.values(selected).filter(Boolean).map((p) => (p as SimpleProduct).id),
@@ -159,7 +163,7 @@ export default function PCBuilderClient() {
       console.log('[PCBuilder] State sau khi thêm vào cart:', state);
     }, 500);
   }
-  const cartItems = useAppSelector(state => state.cartReducer.items);
+  
   function clearProduct(slug: string, id: string) {
     setSelected((prevState) => ({ ...prevState, [slug]: null }));
     const cartItemId = String(id);
@@ -334,35 +338,32 @@ export default function PCBuilderClient() {
                   checkResultOpen ? (issues.length === 0
                     ? 'bg-gradient-to-r from-green to-green-light text-white border-green focus:ring-green'
                     : 'bg-gradient-to-r from-red to-red-light text-white border-red focus:ring-red')
-                  : 'bg-gradient-to-r from-purple to-blue-dark text-white border-purple focus:ring-purple'}
-                hover:scale-105`}
+                  : 'bg-gradient-to-r from-purple to-purple-light text-white border-purple focus:ring-purple hover:scale-105'
+                }`}
               onClick={checkCompatibility}
-              disabled={checking || selectedIds.length < 2}
+              disabled={checking || selectedIds.length === 0}
             >
-              {checking ? "Đang kiểm tra..." : "Kiểm tra tương thích"}
+              {checking ? "Đang kiểm tra..." : checkResultOpen ? (issues.length === 0 ? "✓ Tương thích hoàn toàn" : `⚠ Phát hiện ${issues.length} vấn đề`) : "Kiểm tra tương thích"}
             </button>
-            <span className="text-base text-white font-medium drop-shadow">Đã chọn: {selectedIds.length} / {TARGET_CATEGORIES.length}</span>
           </div>
-          {checkError && <div className="text-xs text-red-200 mt-1">{checkError}</div>}
-          {checkResultOpen && (
-            <div className="mt-4 bg-white/95 border-l-4 border-blue-400 rounded-xl p-5 shadow-xl w-full max-w-2xl animate-fade-in">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-semibold text-blue-700 flex items-center gap-2"><BoltIcon className="w-5 h-5 text-blue-400" />Kết quả tương thích</h3>
-                <button onClick={() => setCheckResultOpen(false)} className="text-[13px] text-blue-500 hover:underline">Đóng</button>
-              </div>
-              {issues.length === 0 ? (
-                <div className="text-green-700 text-base flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full bg-green-400 animate-pulse"></span>Tất cả linh kiện đã chọn đều tương thích!</div>
-              ) : (
-                <div>
-                  <p className="text-sm font-medium mb-1 text-red-600 flex items-center gap-2"><FireIcon className="w-4 h-4 text-red-400" />Vấn đề:</p>
-                  <ul className="space-y-1">
-                    {issues.map((i, idx) => (
-                      <li key={idx} className="text-sm text-red-600 flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-red-400"></span>{i.message}</li>
-                    ))}
-                  </ul>
-                </div>
+          {checkError && (
+            <div className="text-red-600 text-sm bg-red-100 px-4 py-2 rounded-lg">{checkError}</div>
+          )}
+
+          {/* Hiển thị tổng giá */}
+          <div className="bg-gradient-to-r from-blue-dark to-purple rounded-2xl px-8 py-4 shadow-2xl border-2 border-white/30">
+            <div className="text-white text-lg font-medium">Tổng giá:</div>
+            <div className="text-white text-3xl font-bold">
+              {formatVnd(
+                Object.values(selected)
+                  .filter(Boolean)
+                  .reduce((acc, p) => acc + price(p as SimpleProduct), 0)
               )}
             </div>
+          </div>
+
+          {checkResultOpen && (
+            <CompatibilityResults issues={issues} onClose={() => setCheckResultOpen(false)} />
           )}
         </div>
       </div>

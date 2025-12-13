@@ -1,19 +1,42 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions, isAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkAndUpgradeVIPTier } from "@/lib/vipTier";
 
 // GET /api/orders: List orders with pagination and filtering
 export async function GET(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get user by email
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Check if user is admin
+    const adminStatus = await isAdmin(session as any);
+
     const { searchParams } = new URL(req.url);
     const page = Number(searchParams.get("page")) || 1;
     const pageSize = Number(searchParams.get("pageSize")) || 10;
     const status = searchParams.get("status") || undefined;
     const q = searchParams.get("q") || undefined;
 
+    // Admin sees all orders, regular users see only their own
     const where: any = {};
+    if (!adminStatus) {
+      where.userId = user.id;
+    }
+    
     if (status) where.status = status;
     if (q) {
       where.OR = [

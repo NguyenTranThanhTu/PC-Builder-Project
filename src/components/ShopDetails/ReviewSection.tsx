@@ -16,10 +16,8 @@ interface Review {
   verifiedPurchase: boolean;
   helpfulCount: number;
   images?: string[];
-  adminReply?: {
-    content: string;
-    createdAt: string;
-  } | null;
+  adminReply?: string | null;
+  adminReplyAt?: string | null;
 }
 
 interface ReviewStats {
@@ -292,13 +290,15 @@ export default function ReviewSection({ productId, stats, reviews: initialReview
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
                       </svg>
-                      Phản hồi từ Admin
+                      Phản hồi từ Shop
                     </span>
-                    <span className="text-xs text-dark-5">
-                      {new Date(review.adminReply.createdAt).toLocaleDateString("vi-VN")}
-                    </span>
+                    {review.adminReplyAt && (
+                      <span className="text-xs text-dark-5">
+                        {new Date(review.adminReplyAt).toLocaleDateString("vi-VN")}
+                      </span>
+                    )}
                   </div>
-                  <p className="text-sm text-dark-2">{review.adminReply.content}</p>
+                  <p className="text-sm text-dark-2 whitespace-pre-wrap">{review.adminReply}</p>
                 </div>
               )}
             </div>

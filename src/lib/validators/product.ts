@@ -7,12 +7,39 @@ export const productBaseSchema = z.object({
   description: z.string().optional().nullable(),
   priceCents: z.number().int().nonnegative(),
   stock: z.number().int().min(0).default(0),
-  imageUrl: z.string().url().optional().nullable(),
-  imageBlurData: z.string().optional().nullable(),
+  imageUrl: z.preprocess(
+    (val) => {
+      // Normalize empty values to null
+      if (val === "" || val === null || val === undefined) return null;
+      // Ensure path starts with / if it's a relative path
+      if (typeof val === "string" && !val.startsWith("http") && !val.startsWith("/")) {
+        return `/${val}`;
+      }
+      return val;
+    },
+    z.union([
+      z.string().url("URL ảnh không hợp lệ"),
+      z.string().regex(/^\//, "Path ảnh phải bắt đầu bằng /")
+    ]).nullable()
+  ),
+  imageBlurData: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? null : val),
+    z.string().nullable()
+  ),
   featured: z.boolean().optional().default(false),
   categoryId: z.string().min(1, "Cần chọn danh mục"),
   slug: z.string().min(1).optional(), // có thể generate ở server nếu không truyền
-  status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional(),
+  status: z.enum(["DRAFT", "PUBLISHED", "OUT_OF_STOCK", "DISCONTINUED", "ARCHIVED"]).optional(),
+  
+  // Brand & Product Info
+  brand: z.string().min(1).optional().nullable(),
+  manufacturer: z.string().optional().nullable(),
+  modelNumber: z.string().optional().nullable(),
+  warranty: z.string().optional().nullable(),
+  
+  // SEO
+  metaTitle: z.string().max(60).optional().nullable(),
+  metaDescription: z.string().max(160).optional().nullable(),
 });
 
 // Attribute payload from form
