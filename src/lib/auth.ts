@@ -6,6 +6,29 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
+// Extended types for NextAuth
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      name: string | null;
+      email: string | null;
+      image: string | null;
+      role: string;
+    };
+  }
+  interface User {
+    role?: string;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string;
+    role: string;
+  }
+}
+
 function parseAdminEmails(): string[] {
   const emails = process.env.ADMIN_EMAILS || "";
   return emails
@@ -75,8 +98,8 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       // Khi đăng nhập, merge thông tin user vào token
       if (user) {
-        token.id = user.id;
-        token.role = user.role;
+        token.id = user.id as string;
+        token.role = (user as any).role || "USER";
         token.name = user.name;
         token.email = user.email;
         token.image = user.image;
@@ -86,11 +109,11 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       // Luôn truyền đủ thông tin từ token về client
       if (session.user && token) {
-        session.user.id = token.id;
-        session.user.role = token.role;
-        session.user.name = token.name;
-        session.user.email = token.email;
-        session.user.image = token.image;
+        session.user.id = token.id as string;
+        session.user.role = token.role as string;
+        session.user.name = token.name as string | null;
+        session.user.email = token.email as string | null;
+        session.user.image = token.image as string | null;
       }
       return session;
     },

@@ -71,6 +71,17 @@ const config: Config = {
         "light-5": "#E1E8FF",
         "light-6": "#EEF2FF",
       },
+      purple: {
+        DEFAULT: "#9333EA",
+        dark: "#7E22CE",
+        "dark-2": "#6B21A8",
+        light: "#A855F7",
+        "light-2": "#C084FC",
+        "light-3": "#D8B4FE",
+        "light-4": "#E9D5FF",
+        "light-5": "#F3E8FF",
+        "light-6": "#FAF5FF",
+      },
       red: {
         DEFAULT: "#F23030",
         dark: "#E10E0E",
@@ -300,6 +311,8 @@ const config: Config = {
       animation: {
         blob: "blob 7s infinite",
         shimmer: "shimmer 2s infinite",
+        "spin-slow": "spin 3s linear infinite",
+        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
       keyframes: {
         blob: {

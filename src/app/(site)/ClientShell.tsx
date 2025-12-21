@@ -11,6 +11,7 @@ import { PreviewSliderProvider } from "../context/PreviewSliderContext";
 import ScrollToTop from "@/components/Common/ScrollToTop";
 import PreLoader from "@/components/Common/PreLoader";
 import dynamic from "next/dynamic";
+import { ChatProvider, ChatBot, ChatWindow, ChatBotAnnouncement } from "@/components/ChatBot";
 
 // Lazy load heavy, rarely-visible modals to reduce initial JS
 const QuickViewModal = dynamic(() => import("@/components/Common/QuickViewModal"), {
@@ -43,18 +44,25 @@ export default function ClientShell({ children }: { children: React.ReactNode })
         <CartModalProvider>
           <ModalProvider>
             <PreviewSliderProvider>
-              {!isAdmin && <Header />}
-              {children}
-              {/* Lazy-loaded overlays for shop only */}
-              {!isAdmin && (
-                <>
-                  <QuickViewModal />
-                  <CartSidebarModal />
-                  {/* <PreviewSliderModal /> */}
-                  {/* <ScrollToTop /> */}
-                  {/* <Footer /> */}
-                </>
-              )}
+              <ChatProvider>
+                {!isAdmin && <Header />}
+                {!isAdmin && <ChatBotAnnouncement />}
+                {children}
+                {/* Lazy-loaded overlays for shop only */}
+                {!isAdmin && (
+                  <>
+                    <QuickViewModal />
+                    <CartSidebarModal />
+                    {/* <PreviewSliderModal /> */}
+                    {/* <ScrollToTop /> */}
+                    {/* <Footer /> */}
+                    
+                    {/* AI ChatBot */}
+                    <ChatBot />
+                    <ChatWindow />
+                  </>
+                )}
+              </ChatProvider>
             </PreviewSliderProvider>
           </ModalProvider>
         </CartModalProvider>

@@ -32,7 +32,7 @@ export function sortObject(obj: any): any {
  * Create HMAC SHA512 signature
  */
 export function createSignature(data: string, secretKey: string): string {
-  return crypto.createHmac("sha512", secretKey).update(Buffer.from(data, "utf-8")).digest("hex");
+  return crypto.createHmac("sha512", secretKey).update(data, "utf-8").digest("hex");
 }
 
 /**
@@ -55,12 +55,39 @@ export function createPaymentUrl(params: {
   const { orderId, amount, orderInfo, ipAddr, bankCode, locale = "vn" } = params;
 
   // VNPay requires Vietnam timezone (UTC+7)
+  // Always work with UTC, then add VN offset
   const now = new Date();
-  const vnTime = new Date(now.getTime() + (7 * 60 * 60 * 1000)); // Add 7 hours for UTC+7
-  const expireTime = new Date(vnTime.getTime() + (15 * 60 * 1000)); // +15 minutes
+  const VN_OFFSET = 7 * 60 * 60 * 1000; // UTC+7 in milliseconds
   
-  const createDate = vnTime.toISOString().replace(/[-T:\.Z]/g, "").slice(0, 14);
-  const expireDate = expireTime.toISOString().replace(/[-T:\.Z]/g, "").slice(0, 14);
+  // Format date in Vietnam timezone: YYYYMMDDHHmmss
+  const formatDateVN = (utcDate: Date) => {
+    // Get UTC timestamp, add VN offset (+7 hours)
+    const vnTimestamp = utcDate.getTime() + VN_OFFSET;
+    const vnDate = new Date(vnTimestamp);
+    
+    // Use UTC methods to extract components (since vnDate is already adjusted)
+    const year = vnDate.getUTCFullYear();
+    const month = String(vnDate.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(vnDate.getUTCDate()).padStart(2, '0');
+    const hours = String(vnDate.getUTCHours()).padStart(2, '0');
+    const minutes = String(vnDate.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(vnDate.getUTCSeconds()).padStart(2, '0');
+    
+    return `${year}${month}${day}${hours}${minutes}${seconds}`;
+  };
+  
+  // Calculate expire time (+15 minutes from now)
+  const expireTime = new Date(now.getTime() + (15 * 60 * 1000));
+  
+  const createDate = formatDateVN(now);
+  const expireDate = formatDateVN(expireTime);
+  
+  console.log('[VNPay] Time debug:', {
+    utcNow: now.toISOString(),
+    vnNow: new Date(now.getTime() + VN_OFFSET).toISOString().replace('Z', '+07:00'),
+    createDate,
+    expireDate,
+  });
 
   // VNPay requires amount as integer (no decimals)
   const vnpAmount = Math.round(amount * 100);

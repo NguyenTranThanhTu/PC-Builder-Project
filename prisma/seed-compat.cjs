@@ -201,14 +201,16 @@ async function main() {
       note: "Chiều dài GPU không được vượt quá không gian trong case"
     });
 
-    // 4b) GPU TDP should be considered for PSU wattage (handled in total power calc)
+    // 4b) GPU TDP should be considered for PSU wattage
+    // NOTE: This rule is mostly deprecated - total system power is now checked in checkOptimizationWarnings()
+    // We keep this for backward compatibility, but the detailed total power calculation takes priority
     await upsertRule({
       leftCategoryId: gpuCat,
       rightCategoryId: psuCat,
       leftAttributeTypeId: GPU_TDP_WATT,
       rightAttributeTypeId: PSU_WATTAGE,
       operator: Operator.LTE,
-      note: "TDP GPU không nên vượt quá công suất PSU (cần xét tổng với CPU)"
+      note: "[DEPRECATED] TDP GPU không nên vượt quá công suất PSU (cần xét tổng với CPU) - Giờ được kiểm tra bởi calculateTotalSystemPower()"
     });
 
     // ==========================================
@@ -228,13 +230,15 @@ async function main() {
     });
 
     // 5b) CPU TDP should be within PSU capacity
+    // NOTE: This rule is mostly deprecated - total system power is now checked in checkOptimizationWarnings()
+    // We keep this for backward compatibility, but the detailed total power calculation takes priority
     await upsertRule({
       leftCategoryId: cpuCat,
       rightCategoryId: psuCat,
       leftAttributeTypeId: CPU_TDP_WATT,
       rightAttributeTypeId: PSU_WATTAGE,
       operator: Operator.LTE,
-      note: "TDP CPU phải trong khả năng cấp nguồn của PSU"
+      note: "[DEPRECATED] TDP CPU phải trong khả năng cấp nguồn của PSU - Giờ được kiểm tra bởi calculateTotalSystemPower()"
     });
 
     // ==========================================

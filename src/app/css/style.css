@@ -34,6 +34,45 @@
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
   }
+
+  /* Custom scrollbar styles */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply rounded-full;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply rounded-full;
+  }
+
+  .scrollbar-thumb-blue-300::-webkit-scrollbar-thumb {
+    @apply bg-blue-light-3;
+  }
+
+  .scrollbar-track-blue-50::-webkit-scrollbar-track {
+    @apply bg-blue-light-6;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-blue-light-2;
+  }
+
+  .scrollbar-thumb-green-400::-webkit-scrollbar-thumb {
+    @apply bg-green-light-2;
+  }
+
+  .scrollbar-track-green-50::-webkit-scrollbar-track {
+    @apply bg-green-light-6;
+  }
+
+  /* Firefox scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
 }
 
 /* third-party libraries CSS */

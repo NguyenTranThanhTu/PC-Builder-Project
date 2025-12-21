@@ -84,15 +84,24 @@ export default function CompatibilityResults({ issues, onClose }: Props) {
       </div>
 
       {issues.length === 0 ? (
-        <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-300 rounded-xl p-5 flex items-start gap-4">
+        <div className="bg-gradient-to-br from-green-light-6 via-green-light-7 to-green-light-8 border-2 border-green rounded-xl p-6 flex items-start gap-4 shadow-md">
           <div className="flex-shrink-0">
-            <CheckCircleIcon className="w-10 h-10 text-emerald-500" />
+            <div className="bg-gradient-to-br from-green to-green-dark rounded-full p-3 shadow-lg">
+              <CheckCircleIcon className="w-8 h-8 text-white" />
+            </div>
           </div>
           <div>
-            <h4 className="text-lg font-bold text-emerald-800 mb-1">✓ Hoàn hảo!</h4>
-            <p className="text-emerald-700 text-base">
-              Tất cả linh kiện đã chọn đều tương thích hoàn toàn. Bạn có thể tiếp tục thêm vào giỏ hàng và thanh toán.
+            <h4 className="text-xl font-bold text-green-dark-2 mb-2 flex items-center gap-2">
+              ✓ Hoàn hảo! 
+              <span className="text-2xl">🎉</span>
+            </h4>
+            <p className="text-green-dark text-base leading-relaxed font-medium">
+              Tất cả linh kiện đã chọn đều tương thích hoàn toàn. Bạn có thể yên tâm thêm vào giỏ hàng và thanh toán.
             </p>
+            <div className="mt-3 flex items-center gap-2 text-sm text-green-dark-2">
+              <BoltIcon className="w-4 h-4" />
+              <span className="font-semibold">Không phát hiện vấn đề nào!</span>
+            </div>
           </div>
         </div>
       ) : (
@@ -109,7 +118,7 @@ export default function CompatibilityResults({ issues, onClose }: Props) {
               </span>
             )}
             {issues.filter(i => i.severity === "warning").length > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-light-2 to-yellow-light-3 text-yellow-dark-3 text-xs font-semibold border-2 border-yellow shadow-sm">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-light-4 to-yellow-light-5 text-yellow-dark-2 text-xs font-semibold border-2 border-yellow-dark shadow-sm">
                 <span className="bg-gradient-to-br from-yellow to-yellow-dark rounded-full p-1">
                   <ExclamationTriangleIcon className="w-3.5 h-3.5 text-white" />
                 </span>

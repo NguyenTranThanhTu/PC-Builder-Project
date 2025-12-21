@@ -84,7 +84,6 @@ const AttributeRangeFilter = ({ attrKey, label, min = 0, max = 64, step = 1 }: P
             placeholder="--"
           />
         </div>
-        <p className="text-[10px] text-gray-500">Tạo query params: <code>{paramMinName}</code>, <code>{paramMaxName}</code></p>
       </div>
     </div>
   );

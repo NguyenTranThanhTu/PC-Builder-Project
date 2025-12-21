@@ -98,54 +98,6 @@ const PaymentMethod = ({ paymentMethod, setPaymentMethod, selectedBank, setSelec
             </div>
           )}
 
-          {/* Bank Transfer Option */}
-          <label
-            htmlFor="bank"
-            className="flex cursor-pointer select-none items-center gap-4"
-          >
-            <div className="relative">
-              <input
-                type="radio"
-                name="paymentMethod"
-                id="bank"
-                className="sr-only"
-                checked={paymentMethod === "bank"}
-                onChange={() => setPaymentMethod("bank")}
-              />
-              <div
-                className={`flex h-4 w-4 items-center justify-center rounded-full ${
-                  paymentMethod === "bank"
-                    ? "border-4 border-blue"
-                    : "border border-gray-4"
-                }`}
-              ></div>
-            </div>
-
-            <div
-              className={`rounded-md border-[0.5px] py-3.5 px-5 ease-out duration-200 hover:bg-gray-2 hover:border-transparent hover:shadow-none ${
-                paymentMethod === "bank"
-                  ? "border-transparent bg-gray-2"
-                  : " border-gray-4 shadow-1"
-              }`}
-            >
-              <div className="flex items-center">
-                <div className="pr-2.5">
-                  <Image src="/images/checkout/bank.svg" alt="bank" width={29} height={12}/>
-                </div>
-
-                <div className="border-l border-gray-4 pl-2.5">
-                  <p>Direct bank transfer</p>
-                </div>
-              </div>
-            </div>
-          </label>
-          {/* Hiển thị QR nếu chọn bank */}
-          {paymentMethod === "bank" && (
-            <div className="flex justify-center py-4">
-              <img src="/images/checkout/QR_thanhtoan.jpg" alt="Bank QR" className="max-w-[350px] w-full rounded" />
-            </div>
-          )}
-
           {/* Cash on Delivery Option */}
           <label
             htmlFor="cash"

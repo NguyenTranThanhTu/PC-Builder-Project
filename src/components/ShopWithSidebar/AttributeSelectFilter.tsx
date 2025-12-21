@@ -52,9 +52,6 @@ const AttributeSelectFilter = ({ attrKey, label, options }: Props) => {
           </button>
         ))}
       </div>
-      <div className="px-6 pb-4">
-        <p className="text-[10px] text-gray-500">Query param: <code>{paramName}</code></p>
-      </div>
     </div>
   );
 };

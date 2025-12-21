@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Gemini API</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .test-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .test-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .result.loading {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
+            margin-bottom: 15px;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .emoji { font-size: 24px; margin-right: 10px; }
+        .json-view {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Test Gemini AI</h1>
+        <p class="subtitle">PC Builder Chatbot - Powered by Google Gemini</p>
+
+        <!-- Test 1: Check Connection -->
+        <div class="test-section">
+            <div class="test-title"><span class="emoji">✅</span>Test 1: Kiểm tra kết nối</div>
+            <button onclick="testConnection()">Kiểm tra Connection</button>
+            <div id="result1"></div>
+        </div>
+
+        <!-- Test 2: Simple Chat -->
+        <div class="test-section">
+            <div class="test-title"><span class="emoji">💬</span>Test 2: Chat đơn giản</div>
+            <button onclick="testSimpleChat()">Hỏi về PC Builder</button>
+            <button onclick="testCPU()">Hỏi về CPU</button>
+            <button onclick="testBuild()">Hỏi build PC 30tr</button>
+            <div id="result2"></div>
+        </div>
+
+        <!-- Test 3: Custom Message -->
+        <div class="test-section">
+            <div class="test-title"><span class="emoji">✏️</span>Test 3: Tin nhắn tùy chỉnh</div>
+            <textarea id="customMessage" placeholder="Nhập câu hỏi của bạn...">Tôi muốn build PC gaming 2K, budget 30 triệu. Bạn gợi ý giúp tôi?</textarea>
+            <button onclick="testCustom()">Gửi tin nhắn</button>
+            <div id="result3"></div>
+        </div>
+    </div>
+
+    <script>
+        function showLoading(resultId) {
+            document.getElementById(resultId).innerHTML = '<div class="result loading">⏳ Đang xử lý...</div>';
+        }
+
+        function showSuccess(resultId, data) {
+            const formatted = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+            document.getElementById(resultId).innerHTML = 
+                `<div class="result success json-view">${formatted}</div>`;
+        }
+
+        function showError(resultId, error) {
+            document.getElementById(resultId).innerHTML = 
+                `<div class="result error">❌ Lỗi: ${error}</div>`;
+        }
+
+        async function testConnection() {
+            showLoading('result1');
+            try {
+                const response = await fetch('/api/chat/test');
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess('result1', 
+                        `✅ ${data.message}\n\nModel: ${data.model}\nStatus: ${data.status}`
+                    );
+                } else {
+                    showError('result1', data.error || 'Unknown error');
+                }
+            } catch (error) {
+                showError('result1', error.message);
+            }
+        }
+
+        async function testChat(message) {
+            showLoading('result2');
+            try {
+                const response = await fetch('/api/chat/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess('result2', 
+                        `📩 Câu hỏi: ${data.data.userMessage}\n\n🤖 Trả lời:\n${data.data.aiResponse}\n\n⏰ Time: ${new Date(data.data.timestamp).toLocaleTimeString('vi-VN')}`
+                    );
+                } else {
+                    showError('result2', data.error || 'Unknown error');
+                }
+            } catch (error) {
+                showError('result2', error.message);
+            }
+        }
+
+        function testSimpleChat() {
+            testChat('Xin chào, bạn có thể giúp tôi build PC không?');
+        }
+
+        function testCPU() {
+            testChat('i5 và i7 khác nhau như thế nào? Tôi nên chọn loại nào?');
+        }
+
+        function testBuild() {
+            testChat('Build PC gaming 30 triệu chơi 2K');
+        }
+
+        async function testCustom() {
+            const message = document.getElementById('customMessage').value;
+            if (!message.trim()) {
+                showError('result3', 'Vui lòng nhập tin nhắn');
+                return;
+            }
+            
+            showLoading('result3');
+            try {
+                const response = await fetch('/api/chat/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess('result3', 
+                        `📩 Câu hỏi: ${data.data.userMessage}\n\n🤖 Trả lời:\n${data.data.aiResponse}\n\n⏰ Time: ${new Date(data.data.timestamp).toLocaleTimeString('vi-VN')}`
+                    );
+                } else {
+                    showError('result3', data.error || 'Unknown error');
+                }
+            } catch (error) {
+                showError('result3', error.message);
+            }
+        }
+    </script>
+</body>
+</html>

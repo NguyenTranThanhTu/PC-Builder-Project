@@ -48,10 +48,30 @@ const ShopWithSidebar = ({ products, categories = [], pagination, view = "grid" 
     }
   };
 
-  const options = [
-    { label: "Latest Products", value: "0" },
-    { label: "Best Selling", value: "1" },
-    { label: "Old Products", value: "2" },
+  // Sort functionality
+  const [sortOption, setSortOption] = useState("latest");
+  const sortedProducts = React.useMemo(() => {
+    const sorted = [...products];
+    switch (sortOption) {
+      case "latest":
+        // Already sorted by createdAt desc from server
+        return sorted;
+      case "price-low":
+        return sorted.sort((a, b) => a.price - b.price);
+      case "price-high":
+        return sorted.sort((a, b) => b.price - a.price);
+      case "name":
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      default:
+        return sorted;
+    }
+  }, [products, sortOption]);
+
+  const sortOptions = [
+    { label: "Latest Products", value: "latest" },
+    { label: "Price: Low to High", value: "price-low" },
+    { label: "Price: High to Low", value: "price-high" },
+    { label: "Name: A to Z", value: "name" },
   ];
 
   function buildPageHref(page: number, category?: string, v: ViewMode = view) {
@@ -160,10 +180,10 @@ const ShopWithSidebar = ({ products, categories = [], pagination, view = "grid" 
                   {/* <!-- filter box --> */}
                   <div className="bg-white shadow-1 rounded-lg py-4 px-5">
                     <div className="flex items-center justify-between">
-                      <p>Filters:</p>
+                      <h3 className="font-semibold text-dark">Filters</h3>
                       <button
                         type="button"
-                        className="text-blue"
+                        className="text-blue hover:text-blue-dark text-sm font-medium transition-colors"
                         onClick={() => {
                           // Clear known filter params but preserve view
                           const url = new URL(window.location.href);
@@ -176,7 +196,7 @@ const ShopWithSidebar = ({ products, categories = [], pagination, view = "grid" 
                           window.location.assign(url.toString());
                         }}
                       >
-                        Clean All
+                        Clear All
                       </button>
                     </div>
                   </div>
@@ -184,33 +204,7 @@ const ShopWithSidebar = ({ products, categories = [], pagination, view = "grid" 
                   {/* <!-- category box --> */}
                   <CategoryDropdown categories={categories} />
 
-                  {/* Removed gender/size/color filters to match electronics domain */}
-
-                  {/* // <!-- attribute numeric filter example (GPU VRAM GB) --> */}
-                  <AttributeRangeFilter attrKey="GPU_VRAM_GB" label="VRAM (GB)" min={0} max={48} step={1} />
-
-                  {/* // <!-- attribute select filters (CPU Socket, RAM Type) --> */}
-                  <AttributeSelectFilter
-                    attrKey="CPU_SOCKET"
-                    label="CPU Socket"
-                    options={[
-                      { label: "LGA1700", value: "LGA1700" },
-                      { label: "AM5", value: "AM5" },
-                      { label: "AM4", value: "AM4" },
-                      { label: "LGA1200", value: "LGA1200" },
-                    ]}
-                  />
-                  <AttributeSelectFilter
-                    attrKey="RAM_TYPE"
-                    label="RAM Type"
-                    options={[
-                      { label: "DDR5", value: "DDR5" },
-                      { label: "DDR4", value: "DDR4" },
-                      { label: "DDR3", value: "DDR3" },
-                    ]}
-                  />
-
-                  {/* // <!-- price range box --> */}
+                  {/* <!-- price range box --> */}
                   <PriceDropdown />
                 </div>
               </form>
@@ -223,7 +217,11 @@ const ShopWithSidebar = ({ products, categories = [], pagination, view = "grid" 
                 <div className="flex items-center justify-between">
                   {/* <!-- top bar left --> */}
                   <div className="flex flex-wrap items-center gap-4">
-                    <CustomSelect options={options} />
+                    <CustomSelect 
+                      options={sortOptions}
+                      value={sortOption}
+                      onChange={setSortOption}
+                    />
 
                     {pagination ? (
                       <p>
@@ -330,7 +328,7 @@ const ShopWithSidebar = ({ products, categories = [], pagination, view = "grid" 
                     : "flex flex-col gap-7.5"
                 }`}
               >
-                {products.map((item, key) =>
+                {sortedProducts.map((item, key) =>
                   view === "grid" ? (
                     <SingleGridItem item={item} key={key} />
                   ) : (

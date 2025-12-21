@@ -38,8 +38,8 @@ export const productBaseSchema = z.object({
   warranty: z.string().optional().nullable(),
   
   // SEO
-  metaTitle: z.string().max(60).optional().nullable(),
-  metaDescription: z.string().max(160).optional().nullable(),
+  metaTitle: z.string().max(100).optional().nullable(), // Tăng lên 100 để phù hợp tên sản phẩm dài (RAM, GPU...)
+  metaDescription: z.string().max(200).optional().nullable(), // Tăng lên 200 để mô tả đầy đủ hơn
 });
 
 // Attribute payload from form

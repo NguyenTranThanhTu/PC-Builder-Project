@@ -69,7 +69,10 @@ export async function POST(req: Request) {
           const testIds = [...productIds, candidate.id];
           // eslint-disable-next-line no-await-in-loop
           const res = await evaluateCompatibility(testIds);
-          if (res.ok) {
+          // Chỉ loại bỏ sản phẩm có lỗi nghiêm trọng (severity: error)
+          // Vẫn gợi ý sản phẩm có warning/info (suboptimal nhưng vẫn tương thích)
+          const hasError = res.issues.some(issue => issue.severity === 'error');
+          if (!hasError) {
             passing.push(candidate);
             if (passing.length >= maxPerCategory) break;
           }

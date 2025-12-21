@@ -1,16 +1,42 @@
 import React, { useState, useEffect } from "react";
 
-const CustomSelect = ({ options }) => {
+interface Option {
+  label: string;
+  value: string;
+}
+
+interface CustomSelectProps {
+  options: Option[];
+  value?: string;
+  onChange?: (value: string) => void;
+}
+
+const CustomSelect = ({ options, value, onChange }: CustomSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedOption, setSelectedOption] = useState(options[0]);
+  const [selectedOption, setSelectedOption] = useState(
+    options.find(opt => opt.value === value) || options[0]
+  );
+
+  // Update selected option khi value prop thay đổi
+  useEffect(() => {
+    const newOption = options.find(opt => opt.value === value);
+    if (newOption) {
+      setSelectedOption(newOption);
+    }
+  }, [value, options]);
 
   const toggleDropdown = () => {
     setIsOpen((prev) => !prev);
   };
 
-  const handleOptionClick = (option) => {
+  const handleOptionClick = (option: Option) => {
     setSelectedOption(option);
     toggleDropdown();
+    
+    // Notify parent component
+    if (onChange) {
+      onChange(option.value);
+    }
   };
 
   useEffect(() => {
@@ -42,7 +68,7 @@ const CustomSelect = ({ options }) => {
         {selectedOption.label}
       </div>
       <div className={`select-items ${isOpen ? "" : "select-hide"}`}>
-        {options.slice(1, -1).map((option, index) => (
+        {options.slice(1).map((option, index) => (
           <div
             key={index}
             onClick={() => handleOptionClick(option)}

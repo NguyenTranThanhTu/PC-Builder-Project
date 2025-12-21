@@ -1,0 +1,7 @@
+# Image Uploads
+
+This folder contains uploaded images:
+- `banners/` - Banner images for homepage
+- `logo/` - Site logo files
+
+Images are uploaded via admin panel at `/admin/banner`.

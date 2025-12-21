@@ -94,6 +94,7 @@ model User {
   orders         Order[]
   reviews        Review[]
   notifications  Notification[]
+  upgradeAnalyses UpgradeAnalysis[] // PC Upgrade history
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
@@ -403,4 +404,119 @@ model VIPTierConfig {
   updatedAt       DateTime @updatedAt
 
   @@index([minSpend])
+}
+
+// ============================================
+// CHATBOT AI MODELS
+// ============================================
+
+// Chat Conversation (mỗi session chat)
+model ChatConversation {
+  id        String        @id @default(cuid())
+  userId    String? // Null nếu guest user
+  userEmail String? // Email user (nếu đăng nhập)
+  userName  String? // Tên user
+  sessionId String        @unique // Session ID từ browser
+  startedAt DateTime      @default(now())
+  endedAt   DateTime? // Khi user đóng chat
+  status    String        @default("active") // active, ended
+  
+  // Metadata
+  totalMessages Int       @default(0)
+  lastActivity  DateTime  @default(now())
+  userAgent     String? // Browser info
+  ipAddress     String? // IP tracking (optional)
+  
+  messages ChatMessage[]
+  
+  @@index([userId])
+  @@index([sessionId])
+  @@index([startedAt])
+  @@index([status])
+}
+
+// Individual chat messages
+model ChatMessage {
+  id             String           @id @default(cuid())
+  conversationId String
+  role           String // "user" | "bot"
+  content        String           @db.Text // Tin nhắn
+  timestamp      DateTime         @default(now())
+  
+  // Metadata
+  modelUsed      String? // "gemini-2.5-flash"
+  tokensUsed     Int? // Số tokens tiêu tốn
+  responseTime   Int? // Response time (ms)
+  isError        Boolean          @default(false)
+  errorMessage   String? // Nếu có lỗi
+  
+  // Feedback (sau này)
+  feedback       String? // "positive" | "negative" | null
+  feedbackNote   String? // User comment
+  
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  @@index([conversationId])
+  @@index([timestamp])
+  @@index([role])
+}
+
+// ========================================
+// PC Upgrade Advisor Models
+// ========================================
+
+model UpgradeAnalysis {
+  id          String   @id @default(cuid())
+  
+  // User tracking
+  userId      String?  // Optional: nếu user đăng nhập
+  sessionId   String   // Session tracking cho anonymous users
+  
+  // PC Configuration & Analysis
+  currentPC   Json     // CurrentPC config (CPU, GPU, RAM, Mainboard, PSU...)
+  analysis    Json     // PCAnalysisResult (bottlenecks, warnings, recommendations)
+  budget      Json?    // BudgetRange nếu user nhập (min/max)
+  
+  // Selected upgrades (nếu user chọn)
+  selectedUpgrades Json? // Array of selected UpgradeRecommendation
+  totalCost   Float?    // Tổng chi phí nâng cấp
+  
+  // Metadata
+  implemented Boolean  @default(false) // User đã mua chưa (tracking sau)
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+// ========================================
+// Banner & Logo Management
+// ========================================
+
+model Banner {
+  id          String   @id @default(cuid())
+  title       String
+  subtitle    String?  @db.Text
+  imageUrl    String   // Banner image
+  linkUrl     String?  // Optional CTA link
+  buttonText  String?  // CTA button text
+  position    String   @default("hero") // hero, promo, sidebar
+  isActive    Boolean  @default(true)
+  order       Int      @default(0) // Display order
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([position, isActive, order])
+}
+
+model SiteSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique // logo_url, site_name, etc.
+  value     String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

@@ -1,10 +1,25 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 
-const CustomSelect = ({ options }: { options: Array<{ label: string; value: string }> }) => {
+interface CustomSelectProps {
+  options: Array<{ label: string; value: string }>;
+  value?: string;
+  onChange?: (value: string) => void;
+}
+
+const CustomSelect = ({ options, value, onChange }: CustomSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedOption, setSelectedOption] = useState(options?.[0] ?? { label: "", value: "" });
+  const [selectedOption, setSelectedOption] = useState(
+    options.find(opt => opt.value === value) || options[0]
+  );
   const selectRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const newOption = options.find(opt => opt.value === value);
+    if (newOption) {
+      setSelectedOption(newOption);
+    }
+  }, [value, options]);
 
   // Function to close the dropdown when a click occurs outside the component
   const handleClickOutside = (event: MouseEvent) => {
@@ -31,6 +46,9 @@ const CustomSelect = ({ options }: { options: Array<{ label: string; value: stri
   const handleOptionClick = (option: { label: string; value: string }) => {
     setSelectedOption(option);
     toggleDropdown();
+    if (onChange) {
+      onChange(option.value);
+    }
   };
 
   return (

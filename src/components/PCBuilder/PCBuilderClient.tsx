@@ -54,6 +54,7 @@ export default function PCBuilderClient() {
   const [loadingSuggest, setLoadingSuggest] = useState(false);
   const [checking, setChecking] = useState(false);
   const [issues, setIssues] = useState<CompatibilityIssue[]>([]);
+  const [initialProducts, setInitialProducts] = useState<Record<string, SimpleProduct[]>>({});
   const [checkResultOpen, setCheckResultOpen] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
   const [expandedIssues, setExpandedIssues] = useState<Set<number>>(new Set());
@@ -69,6 +70,59 @@ export default function PCBuilderClient() {
     fetchSuggestions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIds.join(",")]);
+
+  // Load initial products for all categories
+  useEffect(() => {
+    const loadInitialProducts = async () => {
+      const results: Record<string, SimpleProduct[]> = {};
+      for (const slug of TARGET_CATEGORIES) {
+        try {
+          const url = new URL("/api/products", window.location.origin);
+          url.searchParams.set("category", slug);
+          url.searchParams.set("pageSize", "20");
+          const res = await fetch(url);
+          const data = await res.json();
+          const items = (data.items || []).map((item: any) => ({
+            id: item.id,
+            name: item.name || item.title || "Sản phẩm không tên",
+            slug: item.slug || item.productSlug || "",
+            priceCents: typeof item.priceCents === "number" ? item.priceCents : Math.round((item.price || item.discountedPrice || 0) * 100),
+            imageUrl: item.imageUrl || (item.imgs?.thumbnails?.[0] ?? null),
+            imageBlurData: item.imageBlurData ?? null,
+          }));
+          results[slug] = items;
+        } catch (e) {
+          console.error(`Error loading initial ${slug}:`, e);
+        }
+      }
+      setInitialProducts(results);
+      setSearchResults(results);
+    };
+    loadInitialProducts();
+  }, []);
+
+  // Real-time search when typing
+  useEffect(() => {
+    const delays: Record<string, NodeJS.Timeout> = {};
+    Object.keys(search).forEach((slug) => {
+      const query = search[slug] || "";
+      if (delays[slug]) clearTimeout(delays[slug]);
+      delays[slug] = setTimeout(() => {
+        if (query.trim() === "") {
+          // Reset to initial products when search is empty
+          setSearchResults(prev => ({
+            ...prev,
+            [slug]: initialProducts[slug] || []
+          }));
+        } else {
+          runSearch(slug);
+        }
+      }, 300); // Debounce 300ms
+    });
+    return () => {
+      Object.values(delays).forEach(timeout => clearTimeout(timeout));
+    };
+  }, [search, initialProducts]);
 
   async function fetchSuggestions() {
     setLoadingSuggest(true);
@@ -173,6 +227,10 @@ export default function PCBuilderClient() {
     } else if (found) {
       dispatch(removeItemFromCart(cartItemId));
     }
+    // Reset trạng thái kiểm tra tương thích khi xóa sản phẩm
+    setCheckResultOpen(false);
+    setIssues([]);
+    setCheckError(null);
   }
 
   // Progress bar tính phần trăm đã chọn
@@ -200,33 +258,60 @@ export default function PCBuilderClient() {
               let statusIcon = null;
               let statusColor = "";
             if (sel) {
-              // Nếu không có lỗi liên quan đến nhóm này => check xanh
-              const hasIssue = issues.some(i => {
+              // Tìm các vấn đề liên quan đến sản phẩm này
+              const relatedIssues = issues.filter(i => {
                 if (!i.leftProductId && !i.rightProductId) return false;
-                return (
-                  (sel.id && (i.leftProductId === sel.id || i.rightProductId === sel.id))
-                );
+                return (sel.id && (i.leftProductId === sel.id || i.rightProductId === sel.id));
               });
-              if (hasIssue) {
-                statusIcon = <ExclamationTriangleIcon className="w-5 h-5 text-yellow-400" title="Có vấn đề tương thích" />;
-                statusColor = "ring-2 ring-yellow-400";
+              
+              if (relatedIssues.length > 0) {
+                // Kiểm tra severity cao nhất
+                const hasError = relatedIssues.some(i => i.severity === "error");
+                const hasWarning = relatedIssues.some(i => i.severity === "warning");
+                
+                if (hasError) {
+                  // Lỗi nghiêm trọng → màu đỏ
+                  statusIcon = <XCircleIcon className="w-5 h-5 text-red-500" title="Lỗi nghiêm trọng" />;
+                  statusColor = "ring-2 ring-red-500";
+                } else if (hasWarning) {
+                  // Cảnh báo → màu vàng
+                  statusIcon = <ExclamationTriangleIcon className="w-5 h-5 text-yellow-500" title="Cảnh báo" />;
+                  statusColor = "ring-2 ring-yellow-500";
+                } else {
+                  // Chỉ có info → màu xanh dương
+                  statusIcon = <InformationCircleIcon className="w-5 h-5 text-blue-500" title="Gợi ý" />;
+                  statusColor = "ring-2 ring-blue-500";
+                }
               } else {
-                statusIcon = <CheckCircleIcon className="w-5 h-5 text-green-500" title="Tương thích" />;
-                statusColor = "ring-2 ring-green-400";
+                // Không có vấn đề → màu xanh lá
+                statusIcon = <CheckCircleIcon className="w-5 h-5 text-green-500" title="Tương thích hoàn hảo" />;
+                statusColor = "ring-2 ring-green-500";
               }
             }
-            // Determine highlight color for selected product
+            // Determine highlight color for selected product based on severity
             let cardBg = 'bg-white/70 backdrop-blur border-blue-100 hover:border-blue-400';
             if (sel) {
-              const hasIssue = issues.some(i => {
+              const relatedIssues = issues.filter(i => {
                 if (!i.leftProductId && !i.rightProductId) return false;
-                return (
-                  (sel.id && (i.leftProductId === sel.id || i.rightProductId === sel.id))
-                );
+                return (sel.id && (i.leftProductId === sel.id || i.rightProductId === sel.id));
               });
-              if (hasIssue) {
-                cardBg = 'bg-gradient-to-br from-red-light to-red/80 border-red';
+              
+              if (relatedIssues.length > 0) {
+                const hasError = relatedIssues.some(i => i.severity === "error");
+                const hasWarning = relatedIssues.some(i => i.severity === "warning");
+                
+                if (hasError) {
+                  // Lỗi nghiêm trọng → màu đỏ
+                  cardBg = 'bg-gradient-to-br from-red-light to-red/80 border-red';
+                } else if (hasWarning) {
+                  // Cảnh báo → màu vàng
+                  cardBg = 'bg-gradient-to-br from-yellow-light to-yellow/80 border-yellow';
+                } else {
+                  // Chỉ info → màu xanh lá
+                  cardBg = 'bg-gradient-to-br from-green-light to-green/80 border-green';
+                }
               } else {
+                // Không có vấn đề → màu xanh lá
                 cardBg = 'bg-gradient-to-br from-green-light to-green/80 border-green';
               }
             }
@@ -270,55 +355,154 @@ export default function PCBuilderClient() {
                     </div>
                   ) : (
                     <>
-                      <div className="flex gap-2 mb-2">
-                        <input
-                          placeholder={`Tìm ${slug}...`}
-                          className="border rounded px-3 py-2 w-full focus:ring-2 focus:ring-blue-300 outline-none"
-                          value={search[slug] || ""}
-                          onChange={(e) => setSearch((p) => ({ ...p, [slug]: e.target.value }))}
-                          title={`Tìm kiếm ${slug}`}
-                        />
-                        <button className="px-3 py-2 rounded-full bg-gradient-to-r from-blue to-cyan text-white font-bold shadow-lg border-2 border-blue-light hover:scale-105 hover:shadow-blue/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue" onClick={() => runSearch(slug)} title="Tìm linh kiện">Tìm</button>
-                      </div>
-                      <div className="grid grid-cols-1 gap-2 max-h-48 overflow-auto">
-                        {(searchResults[slug] || []).map((p) => {
-                          const prod: any = p;
-                          const safeProduct: SimpleProduct = {
-                            id: prod.id,
-                            name: prod.name || prod.title || "Sản phẩm không tên",
-                            slug: prod.slug || prod.productSlug || "",
-                            priceCents: typeof prod.priceCents === "number" ? prod.priceCents : Math.round((prod.price || prod.discountedPrice || 0) * 100),
-                            imageUrl: prod.imageUrl || (prod.imgs?.thumbnails?.[0] ?? null),
-                            imageBlurData: prod.imageBlurData ?? null,
-                          };
-                          return (
-                            <button key={safeProduct.id} onClick={() => selectProduct(slug, safeProduct)} className="flex items-center gap-3 text-left border rounded p-2 hover:bg-blue-50 transition group animate-fade-in" title={`Chọn ${safeProduct.name}`}>
-                              <img src={safeProduct.imageUrl || "/images/products/product-1-sm-1.png"} className="w-12 h-12 object-cover rounded" />
-                              <div>
-                                <div className="text-sm font-medium text-gray-800">{safeProduct.name}</div>
-                                <div className="text-xs text-gray-500">{formatVnd(safeProduct.priceCents / 100)}</div>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {/* Gợi ý linh kiện nếu có */}
-                      {suggestions[slug]?.length ? (
-                        <div className="mt-3">
-                          <div className="text-sm font-medium mb-1 text-blue-700">Gợi ý</div>
-                          <div className="grid grid-cols-1 gap-2">
-                            {suggestions[slug].map((p) => (
-                              <button key={p.id} onClick={() => selectProduct(slug, p)} className="flex items-center gap-3 text-left border rounded p-2 hover:bg-green-50 transition group animate-fade-in" title={`Chọn gợi ý ${p.name}`}>
-                                <img src={p.imageUrl || "/images/products/product-1-sm-1.png"} className="w-12 h-12 object-cover rounded" />
-                                <div>
-                                  <div className="text-sm font-medium text-gray-800">{p.name}</div>
-                                  <div className="text-xs text-gray-500">{formatVnd(price(p))}</div>
-                                </div>
-                              </button>
-                            ))}
+                      {/* Kiểm tra xem đã có linh kiện nào được chọn chưa */}
+                      {Object.values(selected).some(s => s !== null) ? (
+                        /* Nếu đã chọn ít nhất 1 linh kiện → hiển thị gợi ý hoặc kết quả tìm kiếm */
+                        <>
+                          <div className="mb-3">
+                            <input
+                              placeholder={`Tìm kiếm ${slug}...`}
+                              className="border-2 rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-green-300 focus:border-green-500 outline-none transition-all"
+                              value={search[slug] || ""}
+                              onChange={(e) => setSearch((p) => ({ ...p, [slug]: e.target.value }))}
+                              title={`Tìm kiếm ${slug}`}
+                            />
                           </div>
-                        </div>
-                      ) : null}
+                          
+                          {/* Nếu đang search (có text trong search box), hiển thị kết quả tìm kiếm */}
+                          {search[slug] && search[slug].trim() !== "" ? (
+                            <div>
+                              <div className="text-sm font-semibold text-blue-dark mb-2 flex items-center gap-2">
+                                <span>Kết quả tìm kiếm ({(searchResults[slug] || []).length})</span>
+                              </div>
+                              <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-blue-400 scrollbar-track-blue-50">
+                                {(searchResults[slug] || []).length > 0 ? (
+                                  (searchResults[slug] || []).map((p) => {
+                                    const prod: any = p;
+                                    const safeProduct: SimpleProduct = {
+                                      id: prod.id,
+                                      name: prod.name || prod.title || "Sản phẩm không tên",
+                                      slug: prod.slug || prod.productSlug || "",
+                                      priceCents: typeof prod.priceCents === "number" ? prod.priceCents : Math.round((prod.price || prod.discountedPrice || 0) * 100),
+                                      imageUrl: prod.imageUrl || (prod.imgs?.thumbnails?.[0] ?? null),
+                                      imageBlurData: prod.imageBlurData ?? null,
+                                    };
+                                    return (
+                                      <button key={safeProduct.id} onClick={() => selectProduct(slug, safeProduct)} className="flex items-center gap-3 text-left border border-blue-200 rounded-lg p-2 hover:bg-blue-50 hover:border-blue-400 transition group animate-fade-in shadow-sm hover:shadow-md" title={`Chọn ${safeProduct.name}`}>
+                                        <img src={safeProduct.imageUrl || "/images/products/product-1-sm-1.png"} className="w-12 h-12 object-cover rounded border border-gray-200" />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-sm font-medium text-gray-800 truncate">{safeProduct.name}</div>
+                                          <div className="text-xs text-gray-500">{formatVnd(safeProduct.priceCents / 100)}</div>
+                                        </div>
+                                      </button>
+                                    );
+                                  })
+                                ) : (
+                                  <div className="text-center py-4 text-gray-500">
+                                    <p className="text-sm">Không tìm thấy sản phẩm</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : suggestions[slug]?.length ? (
+                            /* Nếu không search → hiển thị gợi ý tương thích */
+                            <div>
+                              <div className="text-sm font-semibold text-green-700 mb-2 flex items-center gap-2">
+                                <LightBulbIcon className="w-4 h-4" />
+                                <span>Gợi ý tương thích ({suggestions[slug].length})</span>
+                              </div>
+                              <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-green-400 scrollbar-track-green-50">
+                                {suggestions[slug].map((p) => (
+                                  <button key={p.id} onClick={() => selectProduct(slug, p)} className="flex items-center gap-3 text-left border border-green-200 rounded-lg p-2 hover:bg-green-50 hover:border-green-400 transition group animate-fade-in shadow-sm hover:shadow-md" title={`Chọn gợi ý ${p.name}`}>
+                                    <img src={p.imageUrl || "/images/products/product-1-sm-1.png"} className="w-12 h-12 object-cover rounded border border-gray-200" />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-sm font-medium text-gray-800 truncate">{p.name}</div>
+                                      <div className="text-xs text-gray-500">{formatVnd(price(p))}</div>
+                                    </div>
+                                    <CheckCircleIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            /* Không có gợi ý tương thích → vẫn cho phép tìm kiếm và chọn sản phẩm khác */
+                            <div>
+                              <div className="text-center py-4 text-yellow-dark-3 bg-yellow-light-2 rounded-lg mb-3 border-2 border-yellow shadow-lg">
+                                <ExclamationTriangleIcon className="w-10 h-10 mx-auto mb-2 text-yellow-dark animate-pulse" />
+                                <p className="text-sm font-bold">⚠️ Không có gợi ý tương thích</p>
+                                <p className="text-xs text-gray-7 mt-1">Bạn vẫn có thể chọn sản phẩm bên dưới và kiểm tra lý do</p>
+                              </div>
+                              <div className="text-sm font-semibold text-gray-700 mb-2">
+                                Tất cả sản phẩm
+                              </div>
+                              <div className="grid grid-cols-1 gap-2 max-h-56 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-50">
+                                {(searchResults[slug] || []).map((p) => {
+                                const prod: any = p;
+                                const safeProduct: SimpleProduct = {
+                                  id: prod.id,
+                                  name: prod.name || prod.title || "Sản phẩm không tên",
+                                  slug: prod.slug || prod.productSlug || "",
+                                  priceCents: typeof prod.priceCents === "number" ? prod.priceCents : Math.round((prod.price || prod.discountedPrice || 0) * 100),
+                                  imageUrl: prod.imageUrl || (prod.imgs?.thumbnails?.[0] ?? null),
+                                  imageBlurData: prod.imageBlurData ?? null,
+                                };
+                                return (
+                                  <button key={safeProduct.id} onClick={() => selectProduct(slug, safeProduct)} className="flex items-center gap-3 text-left border border-gray-200 rounded-lg p-2 hover:bg-gray-50 hover:border-gray-400 transition group animate-fade-in shadow-sm hover:shadow-md" title={`Chọn ${safeProduct.name} để xem lý do không tương thích`}>
+                                    <img src={safeProduct.imageUrl || "/images/products/product-1-sm-1.png"} className="w-12 h-12 object-cover rounded border border-gray-200" />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-sm font-medium text-gray-800 truncate">{safeProduct.name}</div>
+                                      <div className="text-xs text-gray-500">{formatVnd(safeProduct.priceCents / 100)}</div>
+                                    </div>
+                                    <InformationCircleIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          )}
+                        </>
+                      ) : (
+                        /* Nếu chưa chọn linh kiện nào → hiển thị tìm kiếm và danh sách sản phẩm */
+                        <>
+                          <div className="mb-3">
+                            <input
+                              placeholder={`Tìm kiếm ${slug}...`}
+                              className="border-2 rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-blue-300 focus:border-blue-500 outline-none transition-all"
+                              value={search[slug] || ""}
+                              onChange={(e) => setSearch((p) => ({ ...p, [slug]: e.target.value }))}
+                              title={`Tìm kiếm ${slug}`}
+                            />
+                          </div>
+                          {/* Danh sách sản phẩm */}
+                          <div className="mb-3">
+                            <div className="text-sm font-semibold text-gray-700 mb-2">
+                              Danh sách sản phẩm
+                            </div>
+                            <div className="grid grid-cols-1 gap-2 max-h-56 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-blue-50">
+                            {(searchResults[slug] || []).map((p) => {
+                              const prod: any = p;
+                              const safeProduct: SimpleProduct = {
+                                id: prod.id,
+                                name: prod.name || prod.title || "Sản phẩm không tên",
+                                slug: prod.slug || prod.productSlug || "",
+                                priceCents: typeof prod.priceCents === "number" ? prod.priceCents : Math.round((prod.price || prod.discountedPrice || 0) * 100),
+                                imageUrl: prod.imageUrl || (prod.imgs?.thumbnails?.[0] ?? null),
+                                imageBlurData: prod.imageBlurData ?? null,
+                              };
+                              return (
+                                <button key={safeProduct.id} onClick={() => selectProduct(slug, safeProduct)} className="flex items-center gap-3 text-left border rounded-lg p-2 hover:bg-blue-50 transition group animate-fade-in" title={`Chọn ${safeProduct.name}`}>
+                                  <img src={safeProduct.imageUrl || "/images/products/product-1-sm-1.png"} className="w-12 h-12 object-cover rounded" />
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-800">{safeProduct.name}</div>
+                                    <div className="text-xs text-gray-500">{formatVnd(safeProduct.priceCents / 100)}</div>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -335,7 +519,7 @@ export default function PCBuilderClient() {
             <button
               className={`px-5 py-2 rounded-full font-bold shadow-2xl transition-all duration-200 border-2 focus:outline-none focus:ring-2
                 ${checking ? 'bg-gradient-to-r from-yellow-400 to-yellow-600 text-white border-yellow-400 focus:ring-yellow-400' :
-                  checkResultOpen ? (issues.length === 0
+                  checkResultOpen ? (issues.filter(i => i.severity === 'error').length === 0
                     ? 'bg-gradient-to-r from-green to-green-light text-white border-green focus:ring-green'
                     : 'bg-gradient-to-r from-red to-red-light text-white border-red focus:ring-red')
                   : 'bg-gradient-to-r from-purple to-purple-light text-white border-purple focus:ring-purple hover:scale-105'
@@ -343,7 +527,7 @@ export default function PCBuilderClient() {
               onClick={checkCompatibility}
               disabled={checking || selectedIds.length === 0}
             >
-              {checking ? "Đang kiểm tra..." : checkResultOpen ? (issues.length === 0 ? "✓ Tương thích hoàn toàn" : `⚠ Phát hiện ${issues.length} vấn đề`) : "Kiểm tra tương thích"}
+              {checking ? "Đang kiểm tra..." : checkResultOpen ? (issues.filter(i => i.severity === 'error').length === 0 ? "✓ Tương thích hoàn toàn" : `⚠ Phát hiện ${issues.filter(i => i.severity === 'error').length} lỗi`) : "Kiểm tra tương thích"}
             </button>
           </div>
           {checkError && (

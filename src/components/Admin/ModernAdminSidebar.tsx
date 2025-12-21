@@ -89,6 +89,30 @@ const NAV_ITEMS = [
           </svg>
         ),
       },
+      {
+        href: "/admin/vip-config",
+        label: "VIP Tiers",
+        icon: (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+          </svg>
+        ),
+      },
+    ],
+  },
+  {
+    section: "AI & Automation",
+    items: [
+      {
+        href: "/admin/chatbot",
+        label: "ChatBot AI",
+        icon: (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+          </svg>
+        ),
+        badge: "NEW",
+      },
     ],
   },
   {
