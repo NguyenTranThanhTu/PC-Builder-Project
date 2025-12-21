@@ -8,9 +8,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getConversationDetail } from "@/lib/chatLogger";
 
+// ✅ Next.js 15 requires params to be a Promise
+type Ctx = {
+  params: Promise<{ id: string }>;
+};
+
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: Ctx
 ) {
   try {
     // Check admin authentication
@@ -22,7 +27,10 @@ export async function GET(
       );
     }
 
-    const conversation = await getConversationDetail(params.id);
+    // ✅ MUST await params
+    const { id } = await params;
+
+    const conversation = await getConversationDetail(id);
 
     if (!conversation) {
       return NextResponse.json(
